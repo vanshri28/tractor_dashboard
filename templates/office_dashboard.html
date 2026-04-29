@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Main Office</title>
+</head>
+
+<body>
+
+<h2>Main Office Dashboard</h2>
+
+<a href="/logout">Logout</a>
+
+<table border="1">
+<tr>
+<th>ID</th>
+<th>Phone</th>
+<th>Name</th>
+<th>Address</th>
+<th>Tractor</th>
+<th>Trip</th>
+</tr>
+
+{% for row in data %}
+<tr>
+<td>{{row[0]}}</td>
+<td>{{row[1]}}</td>
+<td>{{row[2]}}</td>
+<td>{{row[3]}}</td>
+<td>{{row[4]}}</td>
+<td>{{row[5]}}</td>
+</tr>
+{% endfor %}
+
+</table>
+
+</body>
+</html>
