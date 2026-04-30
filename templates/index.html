@@ -7,87 +7,62 @@
 body{
 margin:0;
 font-family:Arial;
-
-background:
-linear-gradient(rgba(0,0,0,0.6),rgba(0,0,0,0.6)),
+background:linear-gradient(#00000088,#00000088),
 url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7qQZyjG-ef27ploWXIZ4KNMhz100XO99sxA&s");
-
 background-size:cover;
 height:100vh;
 display:flex;
-flex-direction:column;
 justify-content:center;
 align-items:center;
 }
 
-h1{color:white;margin-bottom:30px;}
-
-.card{
+.container{
 display:flex;
-gap:30px;
+gap:20px;
 }
 
 .box{
 background:rgba(255,255,255,0.2);
-backdrop-filter:blur(10px);
-padding:25px;
-border-radius:15px;
+padding:20px;
+border-radius:10px;
 color:white;
-width:300px;
+width:250px;
 text-align:center;
 }
 
-input{
-width:90%;
-padding:10px;
-margin:10px 0;
-border-radius:5px;
-border:none;
-}
-
-button{
-width:95%;
-padding:10px;
-background:#ff6b6b;
-color:white;
-border:none;
-border-radius:5px;
-}
-
-a{color:white;}
+input{width:90%;padding:10px;margin:10px;}
+button{width:95%;padding:10px;background:#27ae60;color:white;border:none;}
 </style>
 </head>
 
 <body>
 
-<h1>🚜 Smart Tractor Management System</h1>
-
-<div class="card">
+<div class="container">
 
 <div class="box">
-<h3>Admin Login</h3>
+<h3>Admin</h3>
 <form action="/admin_login" method="POST">
-<input name="username" placeholder="Username">
-<input type="password" name="password" placeholder="Password">
-<button type="submit">Login</button>
+<input name="username">
+<input type="password" name="password">
+<button>Login</button>
 </form>
 </div>
 
 <div class="box">
-<h3>Farmer Login</h3>
+<h3>Farmer</h3>
 <form action="/farmer_login" method="POST">
-<input name="phone" placeholder="Phone Number">
-<button type="submit">Login</button>
+<input name="phone">
+<button>Login</button>
 </form>
-<p><a href="/register">Register</a></p>
+<a href="/register">Register</a>
 </div>
 
 <div class="box">
-<h3>Main Office</h3>
+<h3>Office</h3>
 <form action="/office_login" method="POST">
-<input name="username" placeholder="Username">
-<input type="password" name="password" placeholder="Password">
-<button type="submit">Login</button>
+<input name="username">
+<input type="password" name="password">
+<button>Login</button>
 </form>
 </div>
 
