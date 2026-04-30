@@ -1,2 +1,7 @@
 Flask
 gunicorn
+openpyxl
+ultralytics
+easyocr
+opencv-python
+requests
