@@ -2,13 +2,18 @@ from flask import Flask, render_template, request, redirect, session, jsonify
 import sqlite3
 import random
 import datetime
+import os
 
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# ---------- DATABASE ----------
+# ---------- DATABASE PATH FIX (IMPORTANT FOR RENDER) ----------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "database.db")
+
+# ---------- DATABASE INIT ----------
 def init_db():
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
     cur.execute("""
@@ -39,7 +44,7 @@ def init_db():
 
 init_db()
 
-# ---------- FUNCTIONS ----------
+# ---------- COMMON FUNCTIONS ----------
 def generate_entry():
     return "E" + str(random.randint(1000,9999))
 
@@ -49,11 +54,12 @@ def generate_token():
 def current_time():
     return datetime.datetime.now().strftime("%H:%M:%S")
 
-# ---------- ROUTES ----------
+# ---------- HOME ----------
 @app.route("/")
 def home():
     return render_template("index.html")
 
+# ---------- ADMIN LOGIN ----------
 @app.route("/admin_login", methods=["POST"])
 def admin_login():
     if request.form["username"] == "admin" and request.form["password"] == "admin123":
@@ -61,6 +67,7 @@ def admin_login():
         return redirect("/admin_dashboard")
     return "Invalid Admin Login"
 
+# ---------- OFFICE LOGIN ----------
 @app.route("/office_login", methods=["POST"])
 def office_login():
     if request.form["username"] == "office" and request.form["password"] == "office123":
@@ -68,11 +75,12 @@ def office_login():
         return redirect("/office_dashboard")
     return "Invalid Office Login"
 
+# ---------- FARMER LOGIN ----------
 @app.route("/farmer_login", methods=["POST"])
 def farmer_login():
     phone = request.form["phone"]
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute("SELECT * FROM farmers WHERE phone=?", (phone,))
     farmer = cur.fetchone()
@@ -84,17 +92,19 @@ def farmer_login():
 
     return "Not Registered"
 
-@app.route("/register", methods=["GET","POST"])
+# ---------- REGISTER ----------
+@app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
         name = request.form["name"]
         phone = request.form["phone"]
         address = request.form["address"]
 
+        # validation
         if len(phone) != 10 or not phone.isdigit():
             return "Invalid Phone Number"
 
-        conn = sqlite3.connect("database.db")
+        conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
 
         try:
@@ -109,9 +119,10 @@ def register():
 
     return render_template("register.html")
 
+# ---------- FETCH FARMER ----------
 @app.route("/get_farmer/<phone>")
 def get_farmer(phone):
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute("SELECT name,address FROM farmers WHERE phone=?", (phone,))
     data = cur.fetchone()
@@ -119,14 +130,15 @@ def get_farmer(phone):
 
     if data:
         return jsonify({"name": data[0], "address": data[1]})
-    return jsonify({"error":"not found"})
+    return jsonify({"error": "not found"})
 
-@app.route("/admin_dashboard", methods=["GET","POST"])
+# ---------- ADMIN DASHBOARD ----------
+@app.route("/admin_dashboard", methods=["GET", "POST"])
 def admin_dashboard():
     if "admin" not in session:
         return redirect("/")
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
     if request.method == "POST":
@@ -149,12 +161,13 @@ def admin_dashboard():
         ))
         conn.commit()
 
-    cur.execute("SELECT * FROM entries")
+    cur.execute("SELECT * FROM entries ORDER BY id DESC")
     data = cur.fetchall()
     conn.close()
 
     return render_template("admin_dashboard.html", data=data)
 
+# ---------- FARMER DASHBOARD ----------
 @app.route("/farmer_dashboard")
 def farmer_dashboard():
     if "farmer" not in session:
@@ -162,31 +175,34 @@ def farmer_dashboard():
 
     phone = session["farmer"]
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute("SELECT * FROM entries WHERE farmer_phone=?", (phone,))
+    cur.execute("SELECT * FROM entries WHERE farmer_phone=? ORDER BY id DESC", (phone,))
     data = cur.fetchall()
     conn.close()
 
     return render_template("farmer_dashboard.html", data=data)
 
+# ---------- OFFICE DASHBOARD ----------
 @app.route("/office_dashboard")
 def office_dashboard():
     if "office" not in session:
         return redirect("/")
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute("SELECT * FROM entries")
+    cur.execute("SELECT * FROM entries ORDER BY id DESC")
     data = cur.fetchall()
     conn.close()
 
     return render_template("office_dashboard.html", data=data)
 
+# ---------- LOGOUT ----------
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
 
+# ---------- RUN ----------
 if __name__ == "__main__":
     app.run(debug=True)
