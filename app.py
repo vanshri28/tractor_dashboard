@@ -1,18 +1,17 @@
 from flask import Flask, render_template, request, redirect, session, jsonify
 import sqlite3
 import os
+from openpyxl import Workbook, load_workbook
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# ---------------- DATABASE ----------------
+# ---------------- DATABASE INIT ----------------
 def init_db():
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
 
+    # Farmers
     cur.execute("""
     CREATE TABLE IF NOT EXISTS farmers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,6 +21,7 @@ def init_db():
     )
     """)
 
+    # Entries (added image column)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS entries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +29,8 @@ def init_db():
         farmer_name TEXT,
         address TEXT,
         tractor TEXT,
-        trip TEXT
+        trip TEXT,
+        image TEXT
     )
     """)
 
@@ -77,7 +78,7 @@ def farmer_login():
     return "Not Registered"
 
 # ---------------- REGISTER ----------------
-@app.route("/register", methods=["GET","POST"])
+@app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
         name = request.form["name"]
@@ -88,8 +89,10 @@ def register():
         cur = conn.cursor()
 
         try:
-            cur.execute("INSERT INTO farmers (name, phone, address) VALUES (?,?,?)",
-                        (name, phone, address))
+            cur.execute(
+                "INSERT INTO farmers (name, phone, address) VALUES (?, ?, ?)",
+                (name, phone, address)
+            )
             conn.commit()
         except:
             return "Phone already exists"
@@ -104,16 +107,17 @@ def register():
 def get_farmer(phone):
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
-    cur.execute("SELECT name,address FROM farmers WHERE phone=?", (phone,))
+
+    cur.execute("SELECT name, address FROM farmers WHERE phone=?", (phone,))
     data = cur.fetchone()
     conn.close()
 
     if data:
         return jsonify({"name": data[0], "address": data[1]})
-    return jsonify({"error":"not found"})
+    return jsonify({"error": "not found"})
 
 # ---------------- ADMIN DASHBOARD ----------------
-@app.route("/admin_dashboard", methods=["GET","POST"])
+@app.route("/admin_dashboard", methods=["GET", "POST"])
 def admin_dashboard():
     if "admin" not in session:
         return redirect("/")
@@ -123,14 +127,15 @@ def admin_dashboard():
 
     if request.method == "POST":
         cur.execute("""
-        INSERT INTO entries (farmer_phone, farmer_name, address, tractor, trip)
-        VALUES (?,?,?,?,?)
+        INSERT INTO entries (farmer_phone, farmer_name, address, tractor, trip, image)
+        VALUES (?, ?, ?, ?, ?, ?)
         """, (
             request.form["phone"],
             request.form["name"],
             request.form["address"],
             request.form["tractor"],
-            request.form["trip"]
+            request.form["trip"],
+            ""
         ))
         conn.commit()
 
@@ -150,10 +155,11 @@ def farmer_dashboard():
 
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
+
     cur.execute("SELECT * FROM entries WHERE farmer_phone=?", (phone,))
     data = cur.fetchall()
-    conn.close()
 
+    conn.close()
     return render_template("farmer_dashboard.html", data=data)
 
 # ---------------- OFFICE DASHBOARD ----------------
@@ -164,11 +170,65 @@ def office_dashboard():
 
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
+
     cur.execute("SELECT * FROM entries")
     data = cur.fetchall()
+
+    conn.close()
+    return render_template("office_dashboard.html", data=data)
+
+# ---------------- API ENTRY (YOLO SIDE) ----------------
+@app.route("/api/entry", methods=["POST"])
+def api_entry():
+    tractor = request.form.get("tractor")
+    trip = request.form.get("trip")
+
+    image = request.files.get("image")
+
+    image_path = ""
+
+    # 📸 Save image
+    if image:
+        folder = "static/uploads"
+        os.makedirs(folder, exist_ok=True)
+
+        filepath = os.path.join(folder, image.filename)
+        image.save(filepath)
+
+        image_path = filepath
+
+    # 🔢 Generate entry number
+    conn = sqlite3.connect("database.db")
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM entries")
+    count = cur.fetchone()[0]
+    entry_no = count + 1
+
+    # 💾 Save DB
+    cur.execute("""
+    INSERT INTO entries (farmer_phone, farmer_name, address, tractor, trip, image)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """, ("AUTO", "AUTO", "AUTO", tractor, trip, image_path))
+
+    conn.commit()
     conn.close()
 
-    return render_template("office_dashboard.html", data=data)
+    # 📊 Save Excel
+    file = "data.xlsx"
+
+    if not os.path.exists(file):
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["Entry No", "Tractor", "Trip"])
+        wb.save(file)
+
+    wb = load_workbook(file)
+    ws = wb.active
+    ws.append([entry_no, tractor, trip])
+    wb.save(file)
+
+    return {"status": "success", "entry_no": entry_no}
 
 # ---------------- LOGOUT ----------------
 @app.route("/logout")
@@ -178,4 +238,6 @@ def logout():
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
