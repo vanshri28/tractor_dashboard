@@ -1,10 +1,12 @@
 from flask import Flask, render_template, request, redirect, session, jsonify
 import sqlite3
+import random
+import datetime
 
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# ---------------- DATABASE ----------------
+# ---------- DATABASE ----------
 def init_db():
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
@@ -25,7 +27,10 @@ def init_db():
         farmer_name TEXT,
         address TEXT,
         tractor TEXT,
-        trip TEXT
+        trip TEXT,
+        entry_no TEXT,
+        token TEXT,
+        time TEXT
     )
     """)
 
@@ -34,12 +39,21 @@ def init_db():
 
 init_db()
 
-# ---------------- HOME ----------------
+# ---------- FUNCTIONS ----------
+def generate_entry():
+    return "E" + str(random.randint(1000,9999))
+
+def generate_token():
+    return "T" + str(random.randint(100,999))
+
+def current_time():
+    return datetime.datetime.now().strftime("%H:%M:%S")
+
+# ---------- ROUTES ----------
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# ---------------- ADMIN LOGIN ----------------
 @app.route("/admin_login", methods=["POST"])
 def admin_login():
     if request.form["username"] == "admin" and request.form["password"] == "admin123":
@@ -47,7 +61,6 @@ def admin_login():
         return redirect("/admin_dashboard")
     return "Invalid Admin Login"
 
-# ---------------- OFFICE LOGIN ----------------
 @app.route("/office_login", methods=["POST"])
 def office_login():
     if request.form["username"] == "office" and request.form["password"] == "office123":
@@ -55,7 +68,6 @@ def office_login():
         return redirect("/office_dashboard")
     return "Invalid Office Login"
 
-# ---------------- FARMER LOGIN ----------------
 @app.route("/farmer_login", methods=["POST"])
 def farmer_login():
     phone = request.form["phone"]
@@ -72,13 +84,15 @@ def farmer_login():
 
     return "Not Registered"
 
-# ---------------- REGISTER ----------------
 @app.route("/register", methods=["GET","POST"])
 def register():
     if request.method == "POST":
         name = request.form["name"]
         phone = request.form["phone"]
         address = request.form["address"]
+
+        if len(phone) != 10 or not phone.isdigit():
+            return "Invalid Phone Number"
 
         conn = sqlite3.connect("database.db")
         cur = conn.cursor()
@@ -95,7 +109,6 @@ def register():
 
     return render_template("register.html")
 
-# ---------------- FETCH FARMER ----------------
 @app.route("/get_farmer/<phone>")
 def get_farmer(phone):
     conn = sqlite3.connect("database.db")
@@ -108,7 +121,6 @@ def get_farmer(phone):
         return jsonify({"name": data[0], "address": data[1]})
     return jsonify({"error":"not found"})
 
-# ---------------- ADMIN DASHBOARD ----------------
 @app.route("/admin_dashboard", methods=["GET","POST"])
 def admin_dashboard():
     if "admin" not in session:
@@ -118,15 +130,22 @@ def admin_dashboard():
     cur = conn.cursor()
 
     if request.method == "POST":
+        entry_no = generate_entry()
+        token = generate_token()
+        time = current_time()
+
         cur.execute("""
-        INSERT INTO entries (farmer_phone, farmer_name, address, tractor, trip)
-        VALUES (?,?,?,?,?)
+        INSERT INTO entries (farmer_phone, farmer_name, address, tractor, trip, entry_no, token, time)
+        VALUES (?,?,?,?,?,?,?,?)
         """, (
             request.form["phone"],
             request.form["name"],
             request.form["address"],
             request.form["tractor"],
-            request.form["trip"]
+            request.form["trip"],
+            entry_no,
+            token,
+            time
         ))
         conn.commit()
 
@@ -136,7 +155,6 @@ def admin_dashboard():
 
     return render_template("admin_dashboard.html", data=data)
 
-# ---------------- FARMER DASHBOARD ----------------
 @app.route("/farmer_dashboard")
 def farmer_dashboard():
     if "farmer" not in session:
@@ -152,7 +170,6 @@ def farmer_dashboard():
 
     return render_template("farmer_dashboard.html", data=data)
 
-# ---------------- OFFICE DASHBOARD ----------------
 @app.route("/office_dashboard")
 def office_dashboard():
     if "office" not in session:
@@ -166,12 +183,10 @@ def office_dashboard():
 
     return render_template("office_dashboard.html", data=data)
 
-# ---------------- LOGOUT ----------------
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
 
-# ---------------- RUN ----------------
 if __name__ == "__main__":
     app.run(debug=True)
