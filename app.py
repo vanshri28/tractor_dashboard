@@ -7,11 +7,11 @@ import os
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# ---------- DATABASE ----------
+# ---------- DATABASE PATH FIX (IMPORTANT FOR RENDER) ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "database.db")
 
-# ---------- INIT DB ----------
+# ---------- DATABASE INIT ----------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -33,8 +33,6 @@ def init_db():
         address TEXT,
         tractor TEXT,
         trip TEXT,
-        driver_name TEXT,
-        driver_phone TEXT,
         entry_no TEXT,
         token TEXT,
         time TEXT
@@ -46,7 +44,7 @@ def init_db():
 
 init_db()
 
-# ---------- FUNCTIONS ----------
+# ---------- COMMON FUNCTIONS ----------
 def generate_entry():
     return "E" + str(random.randint(1000,9999))
 
@@ -62,28 +60,20 @@ def home():
     return render_template("index.html")
 
 # ---------- ADMIN LOGIN ----------
-@app.route("/admin_login", methods=["GET","POST"])
+@app.route("/admin_login", methods=["POST"])
 def admin_login():
-    if request.method == "POST":
-        if request.form["username"] == "admin" and request.form["password"] == "admin123":
-            session["admin"] = True
-            return redirect("/admin_dashboard")
-        else:
-            return "Invalid Admin Login"
-
-    return redirect("/")
+    if request.form["username"] == "admin" and request.form["password"] == "admin123":
+        session["admin"] = True
+        return redirect("/admin_dashboard")
+    return "Invalid Admin Login"
 
 # ---------- OFFICE LOGIN ----------
-@app.route("/office_login", methods=["GET","POST"])
+@app.route("/office_login", methods=["POST"])
 def office_login():
-    if request.method == "POST":
-        if request.form["username"] == "office" and request.form["password"] == "office123":
-            session["office"] = True
-            return redirect("/office_dashboard")
-        else:
-            return "Invalid Office Login"
-
-    return redirect("/")
+    if request.form["username"] == "office" and request.form["password"] == "office123":
+        session["office"] = True
+        return redirect("/office_dashboard")
+    return "Invalid Office Login"
 
 # ---------- FARMER LOGIN ----------
 @app.route("/farmer_login", methods=["POST"])
@@ -103,12 +93,16 @@ def farmer_login():
     return "Not Registered"
 
 # ---------- REGISTER ----------
-@app.route("/register", methods=["GET","POST"])
+@app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
         name = request.form["name"]
         phone = request.form["phone"]
         address = request.form["address"]
+
+        # validation
+        if len(phone) != 10 or not phone.isdigit():
+            return "Invalid Phone Number"
 
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
@@ -139,7 +133,7 @@ def get_farmer(phone):
     return jsonify({"error": "not found"})
 
 # ---------- ADMIN DASHBOARD ----------
-@app.route("/admin_dashboard", methods=["GET","POST"])
+@app.route("/admin_dashboard", methods=["GET", "POST"])
 def admin_dashboard():
     if "admin" not in session:
         return redirect("/")
@@ -148,20 +142,23 @@ def admin_dashboard():
     cur = conn.cursor()
 
     if request.method == "POST":
+        entry_no = generate_entry()
+        token = generate_token()
+        time = current_time()
+
         cur.execute("""
-        INSERT INTO entries 
-        (farmer_phone, farmer_name, address, tractor, trip, driver_name, driver_phone)
-        VALUES (?,?,?,?,?,?,?)
+        INSERT INTO entries (farmer_phone, farmer_name, address, tractor, trip, entry_no, token, time)
+        VALUES (?,?,?,?,?,?,?,?)
         """, (
             request.form["phone"],
             request.form["name"],
             request.form["address"],
             request.form["tractor"],
             request.form["trip"],
-            request.form["driver_name"],
-            request.form["driver_phone"]
+            entry_no,
+            token,
+            time
         ))
-
         conn.commit()
 
     cur.execute("SELECT * FROM entries ORDER BY id DESC")
@@ -169,20 +166,6 @@ def admin_dashboard():
     conn.close()
 
     return render_template("admin_dashboard.html", data=data)
-
-# ---------- OFFICE DASHBOARD ----------
-@app.route("/office_dashboard")
-def office_dashboard():
-    if "office" not in session:
-        return redirect("/")
-
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM entries ORDER BY id DESC")
-    data = cur.fetchall()
-    conn.close()
-
-    return render_template("office_dashboard.html", data=data)
 
 # ---------- FARMER DASHBOARD ----------
 @app.route("/farmer_dashboard")
@@ -200,17 +183,26 @@ def farmer_dashboard():
 
     return render_template("farmer_dashboard.html", data=data)
 
+# ---------- OFFICE DASHBOARD ----------
+@app.route("/office_dashboard")
+def office_dashboard():
+    if "office" not in session:
+        return redirect("/")
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM entries ORDER BY id DESC")
+    data = cur.fetchall()
+    conn.close()
+
+    return render_template("office_dashboard.html", data=data)
+
 # ---------- LOGOUT ----------
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
 
-# ---------- 404 FIX ----------
-@app.errorhandler(404)
-def not_found(e):
-    return redirect("/")
-
 # ---------- RUN ----------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(debug=True)
