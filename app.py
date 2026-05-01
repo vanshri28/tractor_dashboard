@@ -1,208 +1,116 @@
-from flask import Flask, render_template, request, redirect, session, jsonify
+from flask import Flask, render_template, request, redirect
 import sqlite3
-import random
-import datetime
-import os
+from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = "secret123"
 
-# ---------- DATABASE PATH FIX (IMPORTANT FOR RENDER) ----------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "database.db")
+def get_db():
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    return conn
 
-# ---------- DATABASE INIT ----------
+# Create table
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS farmers (
+    conn = get_db()
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
-        phone TEXT UNIQUE,
-        address TEXT
-    )
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS entries (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        farmer_phone TEXT,
-        farmer_name TEXT,
+        phone TEXT,
         address TEXT,
         tractor TEXT,
         trip TEXT,
-        entry_no TEXT,
+        driver TEXT,
+        driver_phone TEXT,
+        entry TEXT,
         token TEXT,
         time TEXT
     )
     """)
-
     conn.commit()
-    conn.close()
 
 init_db()
 
-# ---------- COMMON FUNCTIONS ----------
-def generate_entry():
-    return "E" + str(random.randint(1000,9999))
+# ------------------ ROUTES ------------------
 
-def generate_token():
-    return "T" + str(random.randint(100,999))
-
-def current_time():
-    return datetime.datetime.now().strftime("%H:%M:%S")
-
-# ---------- HOME ----------
-@app.route("/")
-def home():
+@app.route('/')
+def index():
     return render_template("index.html")
 
-# ---------- ADMIN LOGIN ----------
-@app.route("/admin_login", methods=["POST"])
-def admin_login():
-    if request.form["username"] == "admin" and request.form["password"] == "admin123":
-        session["admin"] = True
-        return redirect("/admin_dashboard")
-    return "Invalid Admin Login"
+# ------------------ REGISTER ------------------
 
-# ---------- OFFICE LOGIN ----------
-@app.route("/office_login", methods=["POST"])
-def office_login():
-    if request.form["username"] == "office" and request.form["password"] == "office123":
-        session["office"] = True
-        return redirect("/office_dashboard")
-    return "Invalid Office Login"
-
-# ---------- FARMER LOGIN ----------
-@app.route("/farmer_login", methods=["POST"])
-def farmer_login():
-    phone = request.form["phone"]
-
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM farmers WHERE phone=?", (phone,))
-    farmer = cur.fetchone()
-    conn.close()
-
-    if farmer:
-        session["farmer"] = phone
-        return redirect("/farmer_dashboard")
-
-    return "Not Registered"
-
-# ---------- REGISTER ----------
-@app.route("/register", methods=["GET", "POST"])
+@app.route('/register', methods=['GET','POST'])
 def register():
-    if request.method == "POST":
-        name = request.form["name"]
-        phone = request.form["phone"]
-        address = request.form["address"]
+    if request.method == 'POST':
+        name = request.form['name']
+        phone = request.form['phone']
+        address = request.form['address']
 
-        # validation
-        if len(phone) != 10 or not phone.isdigit():
-            return "Invalid Phone Number"
+        conn = get_db()
+        conn.execute("""
+        INSERT INTO records (name, phone, address, tractor, trip, driver, driver_phone, entry, token, time)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (name, phone, address, "", "", name, phone, "None", "None",
+              datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
-        conn = sqlite3.connect(DB_PATH)
-        cur = conn.cursor()
-
-        try:
-            cur.execute("INSERT INTO farmers (name, phone, address) VALUES (?,?,?)",
-                        (name, phone, address))
-            conn.commit()
-        except:
-            return "Phone already exists"
-
-        conn.close()
-        return redirect("/")
+        conn.commit()
+        return redirect('/')
 
     return render_template("register.html")
 
-# ---------- FETCH FARMER ----------
-@app.route("/get_farmer/<phone>")
-def get_farmer(phone):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT name,address FROM farmers WHERE phone=?", (phone,))
-    data = cur.fetchone()
-    conn.close()
+# ------------------ ADMIN ------------------
 
-    if data:
-        return jsonify({"name": data[0], "address": data[1]})
-    return jsonify({"error": "not found"})
+@app.route('/admin_dashboard', methods=['GET','POST'])
+def admin():
+    conn = get_db()
 
-# ---------- ADMIN DASHBOARD ----------
-@app.route("/admin_dashboard", methods=["GET", "POST"])
-def admin_dashboard():
-    if "admin" not in session:
-        return redirect("/")
+    if request.method == 'POST':
+        name = request.form['name']
+        phone = request.form['phone']
+        address = request.form['address']
+        tractor = request.form['tractor']
+        trip = request.form['trip']
 
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
+        conn.execute("""
+        UPDATE records SET 
+        tractor=?, trip=?, driver=?, driver_phone=?
+        WHERE phone=?
+        """, (tractor, trip, name, phone, phone))
 
-    if request.method == "POST":
-        entry_no = generate_entry()
-        token = generate_token()
-        time = current_time()
-
-        cur.execute("""
-        INSERT INTO entries (farmer_phone, farmer_name, address, tractor, trip, entry_no, token, time)
-        VALUES (?,?,?,?,?,?,?,?)
-        """, (
-            request.form["phone"],
-            request.form["name"],
-            request.form["address"],
-            request.form["tractor"],
-            request.form["trip"],
-            entry_no,
-            token,
-            time
-        ))
         conn.commit()
 
-    cur.execute("SELECT * FROM entries ORDER BY id DESC")
-    data = cur.fetchall()
-    conn.close()
-
+    data = conn.execute("SELECT * FROM records").fetchall()
     return render_template("admin_dashboard.html", data=data)
 
-# ---------- FARMER DASHBOARD ----------
-@app.route("/farmer_dashboard")
-def farmer_dashboard():
-    if "farmer" not in session:
-        return redirect("/")
+# ------------------ OFFICE ------------------
 
-    phone = session["farmer"]
+@app.route('/office_dashboard')
+def office():
+    conn = get_db()
+    data = conn.execute("SELECT * FROM records ORDER BY id DESC").fetchall()
+    return render_template("office_dashboard.html", data=data)
 
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM entries WHERE farmer_phone=? ORDER BY id DESC", (phone,))
-    data = cur.fetchall()
-    conn.close()
+# SEARCH
+@app.route('/search', methods=['POST'])
+def search():
+    phone = request.form['phone']
+    conn = get_db()
 
-    return render_template("farmer_dashboard.html", data=data)
-
-# ---------- OFFICE DASHBOARD ----------
-@app.route("/office_dashboard")
-def office_dashboard():
-    if "office" not in session:
-        return redirect("/")
-
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM entries ORDER BY id DESC")
-    data = cur.fetchall()
-    conn.close()
+    data = conn.execute("""
+    SELECT * FROM records WHERE driver_phone LIKE ?
+    """, ('%' + phone + '%',)).fetchall()
 
     return render_template("office_dashboard.html", data=data)
 
-# ---------- LOGOUT ----------
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/")
+# ------------------ FARMER ------------------
 
-# ---------- RUN ----------
+@app.route('/farmer_dashboard')
+def farmer():
+    conn = get_db()
+    data = conn.execute("SELECT * FROM records").fetchall()
+    return render_template("farmer_dashboard.html", data=data)
+
+
+# ------------------ RUN ------------------
 if __name__ == "__main__":
     app.run(debug=True)
