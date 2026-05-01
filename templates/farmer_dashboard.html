@@ -1,79 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Farmer Dashboard</title>
-
+<title>Farmer</title>
 <style>
-body{
-margin:0;
-font-family:Arial;
-background:linear-gradient(#11998e,#38ef7d);
-color:white;
-}
-
-.container{
-width:70%;
-margin:30px auto;
-text-align:center;
-}
-
-.table-box{
-background:white;
-color:black;
-padding:20px;
-border-radius:10px;
-}
-
-table{
-width:100%;
-border-collapse:collapse;
-}
-
-th{
-background:#16a085;
-color:white;
-padding:10px;
-}
-
-td{
-padding:10px;
-text-align:center;
-}
+body{ text-align:center; font-family:Arial;}
+table{ margin:auto; border-collapse:collapse;}
+th,td{ padding:10px; border:1px solid black;}
 </style>
-
 </head>
 
 <body>
 
-<div class="container">
+<h1>Farmer Dashboard</h1>
 
-<h2>Your Trips</h2>
-<a href="/logout">Logout</a>
-
-<div class="table-box">
 <table>
 <tr>
-<th>Tractor</th>
-<th>Trip</th>
-<th>Entry</th>
-<th>Token</th>
-<th>Time</th>
+<th>Name</th><th>Tractor</th><th>Trip</th>
 </tr>
 
 {% for row in data %}
 <tr>
-<td>{{row[4]}}</td>
-<td>{{row[5]}}</td>
-<td>{{row[6]}}</td>
-<td>{{row[7]}}</td>
-<td>{{row[8]}}</td>
+<td>{{row.name}}</td>
+<td>{{row.tractor}}</td>
+<td>{{row.trip}}</td>
 </tr>
 {% endfor %}
 
 </table>
-</div>
-
-</div>
 
 </body>
 </html>
