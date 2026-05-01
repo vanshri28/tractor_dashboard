@@ -44,6 +44,12 @@ text-align:center;
 tr:nth-child(even){
 background:#f2f2f2;
 }
+
+input{
+padding:10px;
+width:300px;
+margin-bottom:15px;
+}
 </style>
 
 </head>
@@ -55,18 +61,24 @@ background:#f2f2f2;
 <h2>Office Dashboard</h2>
 <a href="/logout">Logout</a>
 
+<!-- SEARCH -->
+<input type="text" id="search" placeholder="Search by Driver Phone" onkeyup="searchTable()">
+
 <div class="table-box">
-<table>
+<table id="table">
 <tr>
 <th>ID</th>
-<th>Name</th>
-<th>Phone</th>
+<th>Farmer</th>
+<th>Farmer Phone</th>
 <th>Address</th>
 <th>Tractor</th>
 <th>Trip</th>
+<th>Driver</th>
+<th>Driver Phone</th>
 <th>Entry</th>
 <th>Token</th>
 <th>Time</th>
+<th>Print</th>
 </tr>
 
 {% for row in data %}
@@ -80,6 +92,15 @@ background:#f2f2f2;
 <td>{{row[6]}}</td>
 <td>{{row[7]}}</td>
 <td>{{row[8]}}</td>
+<td>{{row[9]}}</td>
+<td>{{row[10]}}</td>
+
+<td>
+<button onclick="printSlip('{{row[2]}}','{{row[6]}}','{{row[7]}}','{{row[4]}}','{{row[5]}}','{{row[8]}}','{{row[9]}}')">
+Print
+</button>
+</td>
+
 </tr>
 {% endfor %}
 
@@ -87,6 +108,37 @@ background:#f2f2f2;
 </div>
 
 </div>
+
+<script>
+function searchTable(){
+let input=document.getElementById("search").value.toLowerCase();
+let rows=document.querySelectorAll("#table tr");
+
+rows.forEach((row,i)=>{
+if(i==0) return;
+let text=row.innerText.toLowerCase();
+row.style.display=text.includes(input)?"":"none";
+});
+}
+
+function printSlip(farmer, driver, phone, tractor, trip, entry, token){
+
+let content = `
+<h3>Panchganga Sugar Factory</h3>
+<p>Farmer: ${farmer}</p>
+<p>Driver: ${driver}</p>
+<p>Phone: ${phone}</p>
+<p>Tractor: ${tractor}</p>
+<p>Trip: ${trip}</p>
+<p>Entry: ${entry}</p>
+<p>Token: ${token}</p>
+`;
+
+let win = window.open("", "", "width=300,height=600");
+win.document.write(content);
+win.print();
+}
+</script>
 
 </body>
 </html>
