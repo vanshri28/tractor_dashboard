@@ -3,7 +3,12 @@ import sqlite3
 import random
 import datetime
 import os
-import requests   # for SMS
+
+# SMS (optional)
+try:
+    import requests
+except:
+    requests = None
 
 app = Flask(__name__)
 app.secret_key = "secret123"
@@ -12,12 +17,12 @@ app.secret_key = "secret123"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "database.db")
 
-# ---------- DATABASE INIT ----------
+# ---------- DATABASE INIT (AUTO FIX OLD DB) ----------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
-    # Farmers
+    # Farmers Table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS farmers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,7 +32,7 @@ def init_db():
     )
     """)
 
-    # Entries (FULL UPDATED)
+    # Entries Table (full new structure)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS entries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,6 +49,15 @@ def init_db():
     )
     """)
 
+    # 🔥 AUTO FIX FOR OLD DATABASE (VERY IMPORTANT)
+    columns = ["driver_name", "driver_phone", "entry_no", "token", "time"]
+
+    for col in columns:
+        try:
+            cur.execute(f"ALTER TABLE entries ADD COLUMN {col} TEXT")
+        except:
+            pass  # column already exists
+
     conn.commit()
     conn.close()
 
@@ -59,8 +73,12 @@ def generate_token():
 def current_time():
     return datetime.datetime.now().strftime("%H:%M:%S")
 
-# ---------- SMS FUNCTION ----------
+# ---------- SMS FUNCTION (SAFE) ----------
 def send_sms(number, message):
+    if requests is None:
+        print("requests not installed, SMS skipped")
+        return
+
     try:
         url = "https://www.fast2sms.com/dev/bulkV2"
 
@@ -72,13 +90,13 @@ def send_sms(number, message):
         }
 
         headers = {
-            "authorization": "LbhXwnCK38dA1v9Ec2SkemoDqWszOP4yjrQNufVt7g5aFGZipH2xE8QascrugBlDNeobSIKZJXd91inz",   # <-- replace later
+            "authorization": "LbhXwnCK38dA1v9Ec2SkemoDqWszOP4yjrQNufVt7g5aFGZipH2xE8QascrugBlDNeobSIKZJXd91inz",  # replace later
             "Content-Type": "application/x-www-form-urlencoded"
         }
 
         requests.post(url, data=payload, headers=headers)
-    except:
-        print("SMS Failed")
+    except Exception as e:
+        print("SMS Failed:", e)
 
 # ---------- HOME ----------
 @app.route("/")
@@ -181,17 +199,18 @@ def admin_dashboard():
             request.form["address"],
             request.form["tractor"],
             request.form["trip"],
-            request.form["driver_name"],
-            request.form["driver_phone"],
+            request.form.get("driver_name"),
+            request.form.get("driver_phone"),
             entry_no,
             token,
             time
         ))
+
         conn.commit()
 
-        # SEND SMS
+        # SMS send (optional)
         msg = f"Trip No: {request.form['trip']} | Tractor: {request.form['tractor']}"
-        send_sms(request.form["driver_phone"], msg)
+        send_sms(request.form.get("driver_phone"), msg)
 
     cur.execute("SELECT * FROM entries ORDER BY id DESC")
     data = cur.fetchall()
@@ -229,16 +248,15 @@ def office_dashboard():
 
     return render_template("office_dashboard.html", data=data)
 
-# ---------- SEARCH (DRIVER PHONE API) ----------
+# ---------- SEARCH DRIVER ----------
 @app.route("/search_driver/<phone>")
 def search_driver(phone):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-
     cur.execute("SELECT * FROM entries WHERE driver_phone=?", (phone,))
     data = cur.fetchall()
-
     conn.close()
+
     return jsonify(data)
 
 # ---------- LOGOUT ----------
