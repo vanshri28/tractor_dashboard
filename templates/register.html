@@ -1,45 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Register</title>
-
-<style>
-body{
-margin:0;
-font-family:Arial;
-background:linear-gradient(#00000088,#00000088),
-url("https://images.unsplash.com/photo-1500382017468-9049fed747ef");
-background-size:cover;
-height:100vh;
-display:flex;
-justify-content:center;
-align-items:center;
-}
-
-.box{
-background:rgba(255,255,255,0.2);
-padding:30px;
-border-radius:10px;
-color:white;
-text-align:center;
-}
-</style>
-
+    <title>Register</title>
 </head>
-
 <body>
 
-<div class="box">
-<h2>Register</h2>
+<h2>Farmer Registration</h2>
 
-<form method="POST">
-<input name="name" placeholder="Name"><br>
-<input name="phone" placeholder="Phone"><br>
-<input name="address" placeholder="Address"><br>
-<button>Register</button>
+<form method="POST" action="/register">
+    <input type="text" name="farmer" placeholder="Farmer Name" required><br><br>
+    <input type="text" name="phone" placeholder="Phone" required><br><br>
+    <input type="text" name="address" placeholder="Address" required><br><br>
+    <input type="text" name="tractor" placeholder="Tractor Number" required><br><br>
+
+    <button type="submit">Register</button>
 </form>
-
-</div>
 
 </body>
 </html>
