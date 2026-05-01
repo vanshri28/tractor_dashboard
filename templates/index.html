@@ -1,88 +1,52 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Smart Tractor System</title>
-
+<title>Login</title>
 <style>
 body{
-margin:0;
-font-family:Arial;
-background:linear-gradient(rgba(0,0,0,0.6),rgba(0,0,0,0.6)),
-url("https://images.unsplash.com/photo-1500382017468-9049fed747ef");
+background:url("https://images.unsplash.com/photo-1500382017468-9049fed747ef");
 background-size:cover;
-height:100vh;
-display:flex;
-justify-content:center;
-align-items:center;
-}
-
-.container{
-display:flex;
-gap:30px;
-}
-
-.box{
-background:rgba(255,255,255,0.2);
-backdrop-filter:blur(10px);
-padding:25px;
-border-radius:15px;
-color:white;
-width:250px;
 text-align:center;
+font-family:Arial;
 }
-
+.box{
+background:white;
+padding:20px;
+margin:100px auto;
+width:300px;
+border-radius:10px;
+}
 input{
+padding:10px;
 width:90%;
-padding:10px;
-margin:10px 0;
-border:none;
-border-radius:5px;
+margin:5px;
 }
-
 button{
-width:95%;
 padding:10px;
-background:#27ae60;
+background:green;
 color:white;
 border:none;
-border-radius:5px;
 }
-
-a{color:white;}
 </style>
 </head>
 
 <body>
 
-<div class="container">
-
 <div class="box">
-<h3>Admin</h3>
-<form action="/admin_login" method="POST">
-<input name="username" placeholder="Username">
-<input type="password" name="password" placeholder="Password">
-<button>Login</button>
-</form>
+<h2>Admin</h2>
+<a href="/admin_dashboard"><button>Login</button></a>
 </div>
 
 <div class="box">
-<h3>Farmer</h3>
-<form action="/farmer_login" method="POST">
-<input name="phone" placeholder="Phone">
-<button>Login</button>
-</form>
+<h2>Farmer</h2>
+<a href="/farmer_dashboard"><button>Login</button></a>
+<br><br>
 <a href="/register">Register</a>
 </div>
 
 <div class="box">
-<h3>Office</h3>
-<form action="/office_login" method="POST">
-<input name="username">
-<input type="password" name="password">
-<button>Login</button>
-</form>
-</div>
-
+<h2>Office</h2>
+<a href="/office_dashboard"><button>Login</button></a>
 </div>
 
 </body>
