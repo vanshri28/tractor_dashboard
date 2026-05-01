@@ -36,19 +36,28 @@ background:green;
 color:white;
 border:none;
 }
+
+table{
+width:100%;
+background:white;
+color:black;
+border-collapse:collapse;
+}
+
+th,td{
+padding:10px;
+border:1px solid #ddd;
+}
 </style>
 
 <script>
 function fetchFarmer(){
 let phone=document.getElementById("phone").value;
-
 fetch("/get_farmer/"+phone)
 .then(res=>res.json())
 .then(data=>{
-if(data.name){
 document.getElementById("name").value=data.name;
 document.getElementById("address").value=data.address;
-}
 });
 }
 </script>
@@ -63,22 +72,44 @@ document.getElementById("address").value=data.address;
 <a href="/logout">Logout</a>
 
 <form method="POST">
-
-<input id="phone" name="phone" placeholder="Farmer Phone">
+<input id="phone" name="phone" placeholder="Phone">
 <button type="button" onclick="fetchFarmer()">Fetch</button><br>
 
-<input id="name" name="name" placeholder="Farmer Name">
+<input id="name" name="name" placeholder="Name">
 <input id="address" name="address" placeholder="Address"><br>
 
-<input name="tractor" placeholder="Tractor Number">
-<input name="trip" placeholder="Trip Number"><br>
-
-<input name="driver_name" placeholder="Driver Name">
-<input name="driver_phone" placeholder="Driver Phone"><br>
+<input name="tractor" placeholder="Tractor">
+<input name="trip" placeholder="Trip"><br>
 
 <button type="submit">Submit</button>
-
 </form>
+
+<table>
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Phone</th>
+<th>Tractor</th>
+<th>Trip</th>
+<th>Entry</th>
+<th>Token</th>
+<th>Time</th>
+</tr>
+
+{% for row in data %}
+<tr>
+<td>{{row[0]}}</td>
+<td>{{row[2]}}</td>
+<td>{{row[1]}}</td>
+<td>{{row[4]}}</td>
+<td>{{row[5]}}</td>
+<td>{{row[6]}}</td>
+<td>{{row[7]}}</td>
+<td>{{row[8]}}</td>
+</tr>
+{% endfor %}
+
+</table>
 
 </div>
 
