@@ -72,7 +72,7 @@ def send_sms(number, message):
         }
 
         headers = {
-            "authorization": "YOUR_API_KEY",   # <-- replace later
+            "authorization": "LbhXwnCK38dA1v9Ec2SkemoDqWszOP4yjrQNufVt7g5aFGZipH2xE8QascrugBlDNeobSIKZJXd91inz",   # <-- replace later
             "Content-Type": "application/x-www-form-urlencoded"
         }
 
