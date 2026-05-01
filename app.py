@@ -1,109 +1,216 @@
-from flask import Flask, render_template, request, redirect, jsonify
-import psycopg2
+from flask import Flask, render_template, request, redirect, session, jsonify
+import sqlite3
+import random
+import datetime
 import os
-from datetime import datetime
 
 app = Flask(__name__)
+app.secret_key = "secret123"
 
-# ✅ DB Connection (Render PostgreSQL)
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# ---------- DATABASE ----------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "database.db")
 
-conn = psycopg2.connect(DATABASE_URL)
-cur = conn.cursor()
+# ---------- INIT DB ----------
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
 
-# ✅ CREATE TABLE (auto create)
-cur.execute("""
-CREATE TABLE IF NOT EXISTS farmers (
-    id SERIAL PRIMARY KEY,
-    farmer TEXT,
-    phone TEXT,
-    address TEXT,
-    tractor TEXT,
-    entry INTEGER,
-    token INTEGER,
-    time TEXT
-)
-""")
-conn.commit()
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS farmers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        phone TEXT UNIQUE,
+        address TEXT
+    )
+    """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        farmer_phone TEXT,
+        farmer_name TEXT,
+        address TEXT,
+        tractor TEXT,
+        trip TEXT,
+        driver_name TEXT,
+        driver_phone TEXT,
+        entry_no TEXT,
+        token TEXT,
+        time TEXT
+    )
+    """)
 
-# ✅ HOME
-@app.route('/')
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# ---------- FUNCTIONS ----------
+def generate_entry():
+    return "E" + str(random.randint(1000,9999))
+
+def generate_token():
+    return "T" + str(random.randint(100,999))
+
+def current_time():
+    return datetime.datetime.now().strftime("%H:%M:%S")
+
+# ---------- HOME ----------
+@app.route("/")
 def home():
-    return redirect('/office_dashboard')
+    return render_template("index.html")
 
+# ---------- ADMIN LOGIN ----------
+@app.route("/admin_login", methods=["GET","POST"])
+def admin_login():
+    if request.method == "POST":
+        if request.form["username"] == "admin" and request.form["password"] == "admin123":
+            session["admin"] = True
+            return redirect("/admin_dashboard")
+        else:
+            return "Invalid Admin Login"
 
-# ✅ REGISTER
-@app.route('/register', methods=['GET', 'POST'])
+    return redirect("/")
+
+# ---------- OFFICE LOGIN ----------
+@app.route("/office_login", methods=["GET","POST"])
+def office_login():
+    if request.method == "POST":
+        if request.form["username"] == "office" and request.form["password"] == "office123":
+            session["office"] = True
+            return redirect("/office_dashboard")
+        else:
+            return "Invalid Office Login"
+
+    return redirect("/")
+
+# ---------- FARMER LOGIN ----------
+@app.route("/farmer_login", methods=["POST"])
+def farmer_login():
+    phone = request.form["phone"]
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM farmers WHERE phone=?", (phone,))
+    farmer = cur.fetchone()
+    conn.close()
+
+    if farmer:
+        session["farmer"] = phone
+        return redirect("/farmer_dashboard")
+
+    return "Not Registered"
+
+# ---------- REGISTER ----------
+@app.route("/register", methods=["GET","POST"])
 def register():
-    if request.method == 'POST':
+    if request.method == "POST":
+        name = request.form["name"]
+        phone = request.form["phone"]
+        address = request.form["address"]
 
-        farmer = request.form.get('farmer')
-        phone = request.form.get('phone')
-        address = request.form.get('address')
-        tractor = request.form.get('tractor')
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
 
-        if not tractor:
-            return "Tractor number missing ❌"
+        try:
+            cur.execute("INSERT INTO farmers (name, phone, address) VALUES (?,?,?)",
+                        (name, phone, address))
+            conn.commit()
+        except:
+            return "Phone already exists"
 
-        # 🔥 CLEAN NUMBER PLATE
-        tractor = tractor.replace(" ", "").replace(".", "").upper()
+        conn.close()
+        return redirect("/")
 
+    return render_template("register.html")
+
+# ---------- FETCH FARMER ----------
+@app.route("/get_farmer/<phone>")
+def get_farmer(phone):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT name,address FROM farmers WHERE phone=?", (phone,))
+    data = cur.fetchone()
+    conn.close()
+
+    if data:
+        return jsonify({"name": data[0], "address": data[1]})
+    return jsonify({"error": "not found"})
+
+# ---------- ADMIN DASHBOARD ----------
+@app.route("/admin_dashboard", methods=["GET","POST"])
+def admin_dashboard():
+    if "admin" not in session:
+        return redirect("/")
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    if request.method == "POST":
         cur.execute("""
-        INSERT INTO farmers (farmer, phone, address, tractor, entry, token, time)
-        VALUES (%s, %s, %s, %s, NULL, NULL, NULL)
-        """, (farmer, phone, address, tractor))
+        INSERT INTO entries 
+        (farmer_phone, farmer_name, address, tractor, trip, driver_name, driver_phone)
+        VALUES (?,?,?,?,?,?,?)
+        """, (
+            request.form["phone"],
+            request.form["name"],
+            request.form["address"],
+            request.form["tractor"],
+            request.form["trip"],
+            request.form["driver_name"],
+            request.form["driver_phone"]
+        ))
 
         conn.commit()
 
-        return redirect('/office_dashboard')
-
-    return render_template('register.html')
-
-
-# ✅ DASHBOARD
-@app.route('/office_dashboard')
-def dashboard():
-    cur.execute("SELECT * FROM farmers ORDER BY id DESC")
+    cur.execute("SELECT * FROM entries ORDER BY id DESC")
     data = cur.fetchall()
-    return render_template('office_dashboard.html', data=data)
+    conn.close()
 
+    return render_template("admin_dashboard.html", data=data)
 
-# ✅ API MATCH (OCR call)
-@app.route('/check_plate', methods=['POST'])
-def check_plate():
-    data = request.get_json()
+# ---------- OFFICE DASHBOARD ----------
+@app.route("/office_dashboard")
+def office_dashboard():
+    if "office" not in session:
+        return redirect("/")
 
-    plate = data.get("plate")
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM entries ORDER BY id DESC")
+    data = cur.fetchall()
+    conn.close()
 
-    if not plate:
-        return jsonify({"status": "ERROR"})
+    return render_template("office_dashboard.html", data=data)
 
-    # 🔥 CLEAN AGAIN
-    plate = plate.replace(" ", "").replace(".", "").upper()
+# ---------- FARMER DASHBOARD ----------
+@app.route("/farmer_dashboard")
+def farmer_dashboard():
+    if "farmer" not in session:
+        return redirect("/")
 
-    cur.execute("SELECT * FROM farmers WHERE tractor=%s", (plate,))
-    row = cur.fetchone()
+    phone = session["farmer"]
 
-    if row:
-        entry = row[0]
-        token = row[0]
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM entries WHERE farmer_phone=? ORDER BY id DESC", (phone,))
+    data = cur.fetchall()
+    conn.close()
 
-        time_now = datetime.now().strftime("%H:%M:%S")
+    return render_template("farmer_dashboard.html", data=data)
 
-        cur.execute("""
-        UPDATE farmers
-        SET entry=%s, token=%s, time=%s
-        WHERE tractor=%s
-        """, (entry, token, time_now, plate))
+# ---------- LOGOUT ----------
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/")
 
-        conn.commit()
+# ---------- 404 FIX ----------
+@app.errorhandler(404)
+def not_found(e):
+    return redirect("/")
 
-        return jsonify({"status": "MATCH"})
-
-    else:
-        return jsonify({"status": "NOT MATCH"})
-
-
+# ---------- RUN ----------
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=10000)
