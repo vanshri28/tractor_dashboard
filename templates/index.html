@@ -7,7 +7,7 @@
 body{
 margin:0;
 font-family:Arial;
-background:linear-gradient(rgba(0,0,0,0.6),rgba(0,0,0,0.6)),
+background:linear-gradient(#00000088,#00000088),
 url("https://images.unsplash.com/photo-1500382017468-9049fed747ef");
 background-size:cover;
 height:100vh;
@@ -18,38 +18,18 @@ align-items:center;
 
 .container{
 display:flex;
-gap:30px;
+gap:20px;
 }
 
 .box{
 background:rgba(255,255,255,0.2);
-backdrop-filter:blur(10px);
-padding:25px;
-border-radius:15px;
+padding:20px;
+border-radius:10px;
 color:white;
-width:250px;
 text-align:center;
 }
-
-input{
-width:90%;
-padding:10px;
-margin:10px 0;
-border:none;
-border-radius:5px;
-}
-
-button{
-width:95%;
-padding:10px;
-background:#27ae60;
-color:white;
-border:none;
-border-radius:5px;
-}
-
-a{color:white;}
 </style>
+
 </head>
 
 <body>
@@ -59,8 +39,8 @@ a{color:white;}
 <div class="box">
 <h3>Admin</h3>
 <form action="/admin_login" method="POST">
-<input name="username" placeholder="Username">
-<input type="password" name="password" placeholder="Password">
+<input name="username"><br>
+<input type="password" name="password"><br>
 <button>Login</button>
 </form>
 </div>
@@ -68,7 +48,7 @@ a{color:white;}
 <div class="box">
 <h3>Farmer</h3>
 <form action="/farmer_login" method="POST">
-<input name="phone" placeholder="Phone">
+<input name="phone"><br>
 <button>Login</button>
 </form>
 <a href="/register">Register</a>
@@ -77,8 +57,8 @@ a{color:white;}
 <div class="box">
 <h3>Office</h3>
 <form action="/office_login" method="POST">
-<input name="username">
-<input type="password" name="password">
+<input name="username"><br>
+<input type="password" name="password"><br>
 <button>Login</button>
 </form>
 </div>
