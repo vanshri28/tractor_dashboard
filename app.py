@@ -4,25 +4,17 @@ import random
 import datetime
 import os
 
-# SMS (optional)
-try:
-    import requests
-except:
-    requests = None
-
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# ---------- DATABASE PATH ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "database.db")
 
-# ---------- DATABASE INIT (AUTO FIX OLD DB) ----------
+# ---------- INIT DB ----------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
-    # Farmers Table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS farmers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,7 +24,6 @@ def init_db():
     )
     """)
 
-    # Entries Table (full new structure)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS entries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,15 +40,6 @@ def init_db():
     )
     """)
 
-    # 🔥 AUTO FIX FOR OLD DATABASE (VERY IMPORTANT)
-    columns = ["driver_name", "driver_phone", "entry_no", "token", "time"]
-
-    for col in columns:
-        try:
-            cur.execute(f"ALTER TABLE entries ADD COLUMN {col} TEXT")
-        except:
-            pass  # column already exists
-
     conn.commit()
     conn.close()
 
@@ -73,93 +55,22 @@ def generate_token():
 def current_time():
     return datetime.datetime.now().strftime("%H:%M:%S")
 
-# ---------- SMS FUNCTION (SAFE) ----------
-def send_sms(number, message):
-    if requests is None:
-        print("requests not installed, SMS skipped")
-        return
-
-    try:
-        url = "https://www.fast2sms.com/dev/bulkV2"
-
-        payload = {
-            "sender_id": "TXTIND",
-            "message": message,
-            "route": "v3",
-            "numbers": number,
-        }
-
-        headers = {
-            "authorization": "LbhXwnCK38dA1v9Ec2SkemoDqWszOP4yjrQNufVt7g5aFGZipH2xE8QascrugBlDNeobSIKZJXd91inz",  # replace later
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
-
-        requests.post(url, data=payload, headers=headers)
-    except Exception as e:
-        print("SMS Failed:", e)
-
 # ---------- HOME ----------
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# ---------- ADMIN LOGIN ----------
-@app.route("/admin_login", methods=["POST"])
-def admin_login():
-    if request.form["username"] == "admin" and request.form["password"] == "admin123":
-        session["admin"] = True
-        return redirect("/admin_dashboard")
-    return "Invalid Admin Login"
-
-# ---------- OFFICE LOGIN ----------
-@app.route("/office_login", methods=["POST"])
-def office_login():
-    if request.form["username"] == "office" and request.form["password"] == "office123":
-        session["office"] = True
-        return redirect("/office_dashboard")
-    return "Invalid Office Login"
-
-# ---------- FARMER LOGIN ----------
-@app.route("/farmer_login", methods=["POST"])
-def farmer_login():
-    phone = request.form["phone"]
-
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM farmers WHERE phone=?", (phone,))
-    farmer = cur.fetchone()
-    conn.close()
-
-    if farmer:
-        session["farmer"] = phone
-        return redirect("/farmer_dashboard")
-
-    return "Not Registered"
-
 # ---------- REGISTER ----------
-@app.route("/register", methods=["GET", "POST"])
+@app.route("/register", methods=["GET","POST"])
 def register():
     if request.method == "POST":
-        name = request.form["name"]
-        phone = request.form["phone"]
-        address = request.form["address"]
-
-        if len(phone) != 10 or not phone.isdigit():
-            return "Invalid Phone Number"
-
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
-
-        try:
-            cur.execute("INSERT INTO farmers (name, phone, address) VALUES (?,?,?)",
-                        (name, phone, address))
-            conn.commit()
-        except:
-            return "Phone already exists"
-
+        cur.execute("INSERT INTO farmers (name, phone, address) VALUES (?,?,?)",
+                    (request.form["name"], request.form["phone"], request.form["address"]))
+        conn.commit()
         conn.close()
         return redirect("/")
-
     return render_template("register.html")
 
 # ---------- FETCH FARMER ----------
@@ -173,44 +84,30 @@ def get_farmer(phone):
 
     if data:
         return jsonify({"name": data[0], "address": data[1]})
-    return jsonify({"error": "not found"})
+    return jsonify({})
 
-# ---------- ADMIN DASHBOARD ----------
-@app.route("/admin_dashboard", methods=["GET", "POST"])
+# ---------- ADMIN ----------
+@app.route("/admin_dashboard", methods=["GET","POST"])
 def admin_dashboard():
-    if "admin" not in session:
-        return redirect("/")
-
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
     if request.method == "POST":
-        entry_no = generate_entry()
-        token = generate_token()
-        time = current_time()
-
+        # ❗ ENTRY & TOKEN NOT GENERATED HERE
         cur.execute("""
         INSERT INTO entries 
-        (farmer_phone, farmer_name, address, tractor, trip, driver_name, driver_phone, entry_no, token, time)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
+        (farmer_phone, farmer_name, address, tractor, trip, driver_name, driver_phone)
+        VALUES (?,?,?,?,?,?,?)
         """, (
             request.form["phone"],
             request.form["name"],
             request.form["address"],
             request.form["tractor"],
             request.form["trip"],
-            request.form.get("driver_name"),
-            request.form.get("driver_phone"),
-            entry_no,
-            token,
-            time
+            request.form["driver_name"],
+            request.form["driver_phone"]
         ))
-
         conn.commit()
-
-        # SMS send (optional)
-        msg = f"Trip No: {request.form['trip']} | Tractor: {request.form['tractor']}"
-        send_sms(request.form.get("driver_phone"), msg)
 
     cur.execute("SELECT * FROM entries ORDER BY id DESC")
     data = cur.fetchall()
@@ -218,28 +115,9 @@ def admin_dashboard():
 
     return render_template("admin_dashboard.html", data=data)
 
-# ---------- FARMER DASHBOARD ----------
-@app.route("/farmer_dashboard")
-def farmer_dashboard():
-    if "farmer" not in session:
-        return redirect("/")
-
-    phone = session["farmer"]
-
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM entries WHERE farmer_phone=? ORDER BY id DESC", (phone,))
-    data = cur.fetchall()
-    conn.close()
-
-    return render_template("farmer_dashboard.html", data=data)
-
-# ---------- OFFICE DASHBOARD ----------
+# ---------- OFFICE ----------
 @app.route("/office_dashboard")
 def office_dashboard():
-    if "office" not in session:
-        return redirect("/")
-
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute("SELECT * FROM entries ORDER BY id DESC")
@@ -248,22 +126,49 @@ def office_dashboard():
 
     return render_template("office_dashboard.html", data=data)
 
-# ---------- SEARCH DRIVER ----------
-@app.route("/search_driver/<phone>")
-def search_driver(phone):
+# ---------- 🔥 AI MATCH ROUTE ----------
+@app.route("/check_plate", methods=["POST"])
+def check_plate():
+    detected_plate = request.json["plate"].strip().upper()
+
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute("SELECT * FROM entries WHERE driver_phone=?", (phone,))
-    data = cur.fetchall()
-    conn.close()
 
-    return jsonify(data)
+    # match tractor number
+    cur.execute("SELECT * FROM entries WHERE UPPER(tractor)=?", (detected_plate,))
+    data = cur.fetchone()
 
-# ---------- LOGOUT ----------
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/")
+    if data:
+        # already generated?
+        if data[8] is not None:
+            return jsonify({
+                "status": "ALREADY",
+                "entry": data[8],
+                "token": data[9]
+            })
+
+        entry_no = generate_entry()
+        token = generate_token()
+        time = current_time()
+
+        cur.execute("""
+        UPDATE entries 
+        SET entry_no=?, token=?, time=? 
+        WHERE id=?
+        """, (entry_no, token, time, data[0]))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "status": "MATCH",
+            "entry": entry_no,
+            "token": token
+        })
+
+    else:
+        conn.close()
+        return jsonify({"status": "NOT MATCH"})
 
 # ---------- RUN ----------
 if __name__ == "__main__":
