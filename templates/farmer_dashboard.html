@@ -23,22 +23,6 @@ color:black;
 padding:20px;
 border-radius:10px;
 }
-
-table{
-width:100%;
-border-collapse:collapse;
-}
-
-th{
-background:#16a085;
-color:white;
-padding:10px;
-}
-
-td{
-padding:10px;
-text-align:center;
-}
 </style>
 
 </head>
@@ -51,7 +35,7 @@ text-align:center;
 <a href="/logout">Logout</a>
 
 <div class="table-box">
-<table>
+<table border="1">
 <tr>
 <th>Tractor</th>
 <th>Trip</th>
@@ -64,9 +48,9 @@ text-align:center;
 <tr>
 <td>{{row[4]}}</td>
 <td>{{row[5]}}</td>
-<td>{{row[6]}}</td>
-<td>{{row[7]}}</td>
 <td>{{row[8]}}</td>
+<td>{{row[9]}}</td>
+<td>{{row[10]}}</td>
 </tr>
 {% endfor %}
 
