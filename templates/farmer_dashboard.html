@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Farmer Dashboard</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:linear-gradient(#11998e,#38ef7d);
+color:white;
+}
+
+.container{
+width:70%;
+margin:30px auto;
+text-align:center;
+}
+
+.table-box{
+background:white;
+color:black;
+padding:20px;
+border-radius:10px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Your Trips</h2>
+<a href="/logout">Logout</a>
+
+<div class="table-box">
+<table border="1">
+<tr>
+<th>Tractor</th>
+<th>Trip</th>
+<th>Entry</th>
+<th>Token</th>
+<th>Time</th>
+</tr>
+
+{% for row in data %}
+<tr>
+<td>{{row[4]}}</td>
+<td>{{row[5]}}</td>
+<td>{{row[8]}}</td>
+<td>{{row[9]}}</td>
+<td>{{row[10]}}</td>
+</tr>
+{% endfor %}
+
+</table>
+</div>
+
+</div>
+
+</body>
+</html>

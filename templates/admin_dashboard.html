@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Dashboard</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:linear-gradient(#1e3c72,#2a5298);
+color:white;
+}
+
+.container{
+width:80%;
+margin:30px auto;
+text-align:center;
+}
+
+form{
+background:white;
+color:black;
+padding:20px;
+border-radius:10px;
+margin-bottom:20px;
+}
+
+input{
+padding:10px;
+margin:5px;
+}
+
+button{
+padding:10px;
+background:green;
+color:white;
+border:none;
+}
+</style>
+
+<script>
+function fetchFarmer(){
+let phone=document.getElementById("phone").value;
+
+fetch("/get_farmer/"+phone)
+.then(res=>res.json())
+.then(data=>{
+if(data.name){
+document.getElementById("name").value=data.name;
+document.getElementById("address").value=data.address;
+}
+});
+}
+</script>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Admin Dashboard</h2>
+<a href="/logout">Logout</a>
+
+<form method="POST">
+
+<input id="phone" name="phone" placeholder="Farmer Phone">
+<button type="button" onclick="fetchFarmer()">Fetch</button><br>
+
+<input id="name" name="name" placeholder="Farmer Name">
+<input id="address" name="address" placeholder="Address"><br>
+
+<input name="tractor" placeholder="Tractor Number">
+<input name="trip" placeholder="Trip Number"><br>
+
+<input name="driver_name" placeholder="Driver Name">
+<input name="driver_phone" placeholder="Driver Phone"><br>
+
+<button type="submit">Submit</button>
+
+</form>
+
+</div>
+
+</body>
+</html>
