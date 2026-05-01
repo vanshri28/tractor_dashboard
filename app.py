@@ -1,111 +1,108 @@
-from flask import Flask, request, jsonify, render_template, redirect
+from flask import Flask, render_template, request, redirect, jsonify
 import psycopg2
 import os
-import random
 from datetime import datetime
 
 app = Flask(__name__)
 
-# ---------------- DB CONNECTION ----------------
-def get_connection():
-    return psycopg2.connect(os.environ.get("DATABASE_URL"))
+# ✅ DB Connection (Render PostgreSQL)
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-# ---------------- NORMALIZE FUNCTION ----------------
-def normalize_plate(plate):
-    return plate.replace(" ", "").replace("-", "").replace(".", "").upper()
+conn = psycopg2.connect(DATABASE_URL)
+cur = conn.cursor()
 
-# ---------------- HOME ----------------
+# ✅ CREATE TABLE (auto create)
+cur.execute("""
+CREATE TABLE IF NOT EXISTS farmers (
+    id SERIAL PRIMARY KEY,
+    farmer TEXT,
+    phone TEXT,
+    address TEXT,
+    tractor TEXT,
+    entry INTEGER,
+    token INTEGER,
+    time TEXT
+)
+""")
+conn.commit()
+
+
+# ✅ HOME
 @app.route('/')
-def index():
-    return render_template("index.html")
+def home():
+    return redirect('/office_dashboard')
 
-# ---------------- REGISTER ----------------
+
+# ✅ REGISTER
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        farmer = request.form['farmer']
-        phone = request.form['phone']
-        address = request.form['address']
-        tractor = normalize_plate(request.form['tractor'])
-        trip = request.form['trip']
-        driver = request.form['driver']
-        driver_phone = request.form['driver_phone']
 
-        conn = get_connection()
-        cur = conn.cursor()
+        farmer = request.form.get('farmer')
+        phone = request.form.get('phone')
+        address = request.form.get('address')
+        tractor = request.form.get('tractor')
+
+        if not tractor:
+            return "Tractor number missing ❌"
+
+        # 🔥 CLEAN NUMBER PLATE
+        tractor = tractor.replace(" ", "").replace(".", "").upper()
 
         cur.execute("""
-            INSERT INTO farmers 
-            (farmer, phone, address, tractor, trip, driver, driver_phone)
-            VALUES (%s,%s,%s,%s,%s,%s,%s)
-        """, (farmer, phone, address, tractor, trip, driver, driver_phone))
+        INSERT INTO farmers (farmer, phone, address, tractor, entry, token, time)
+        VALUES (%s, %s, %s, %s, NULL, NULL, NULL)
+        """, (farmer, phone, address, tractor))
 
         conn.commit()
-        cur.close()
-        conn.close()
 
         return redirect('/office_dashboard')
 
-    return render_template("register.html")
+    return render_template('register.html')
 
-# ---------------- DASHBOARD ----------------
+
+# ✅ DASHBOARD
 @app.route('/office_dashboard')
-def office_dashboard():
-    conn = get_connection()
-    cur = conn.cursor()
-
+def dashboard():
     cur.execute("SELECT * FROM farmers ORDER BY id DESC")
     data = cur.fetchall()
+    return render_template('office_dashboard.html', data=data)
 
-    cur.close()
-    conn.close()
 
-    return render_template("office_dashboard.html", data=data)
-
-# ---------------- CHECK PLATE API ----------------
+# ✅ API MATCH (OCR call)
 @app.route('/check_plate', methods=['POST'])
 def check_plate():
     data = request.get_json()
+
     plate = data.get("plate")
 
-    norm_plate = normalize_plate(plate)
+    if not plate:
+        return jsonify({"status": "ERROR"})
 
-    conn = get_connection()
-    cur = conn.cursor()
+    # 🔥 CLEAN AGAIN
+    plate = plate.replace(" ", "").replace(".", "").upper()
 
-    cur.execute("SELECT id, tractor FROM farmers")
-    rows = cur.fetchall()
+    cur.execute("SELECT * FROM farmers WHERE tractor=%s", (plate,))
+    row = cur.fetchone()
 
-    for row in rows:
-        db_id = row[0]
-        db_plate = normalize_plate(row[1])
+    if row:
+        entry = row[0]
+        token = row[0]
 
-        if norm_plate == db_plate:
-            entry = random.randint(100, 999)
-            token = random.randint(1, 50)
-            now = datetime.now().strftime("%H:%M:%S")
+        time_now = datetime.now().strftime("%H:%M:%S")
 
-            cur.execute("""
-                UPDATE farmers 
-                SET entry=%s, token=%s, time=%s 
-                WHERE id=%s
-            """, (entry, token, now, db_id))
+        cur.execute("""
+        UPDATE farmers
+        SET entry=%s, token=%s, time=%s
+        WHERE tractor=%s
+        """, (entry, token, time_now, plate))
 
-            conn.commit()
-            cur.close()
-            conn.close()
+        conn.commit()
 
-            return jsonify({
-                "status": "MATCH",
-                "entry": entry,
-                "token": token,
-                "time": now
-            })
+        return jsonify({"status": "MATCH"})
 
-    cur.close()
-    conn.close()
-
-    return jsonify({"status": "NOT MATCH"})
+    else:
+        return jsonify({"status": "NOT MATCH"})
 
 
 if __name__ == "__main__":
