@@ -3,11 +3,12 @@ import sqlite3
 import random
 import datetime
 import os
+import requests   # for SMS
 
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# ---------- DATABASE PATH FIX (IMPORTANT FOR RENDER) ----------
+# ---------- DATABASE PATH ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "database.db")
 
@@ -16,6 +17,7 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
+    # Farmers
     cur.execute("""
     CREATE TABLE IF NOT EXISTS farmers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,6 +27,7 @@ def init_db():
     )
     """)
 
+    # Entries (FULL UPDATED)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS entries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,6 +36,8 @@ def init_db():
         address TEXT,
         tractor TEXT,
         trip TEXT,
+        driver_name TEXT,
+        driver_phone TEXT,
         entry_no TEXT,
         token TEXT,
         time TEXT
@@ -44,7 +49,7 @@ def init_db():
 
 init_db()
 
-# ---------- COMMON FUNCTIONS ----------
+# ---------- FUNCTIONS ----------
 def generate_entry():
     return "E" + str(random.randint(1000,9999))
 
@@ -53,6 +58,27 @@ def generate_token():
 
 def current_time():
     return datetime.datetime.now().strftime("%H:%M:%S")
+
+# ---------- SMS FUNCTION ----------
+def send_sms(number, message):
+    try:
+        url = "https://www.fast2sms.com/dev/bulkV2"
+
+        payload = {
+            "sender_id": "TXTIND",
+            "message": message,
+            "route": "v3",
+            "numbers": number,
+        }
+
+        headers = {
+            "authorization": "YOUR_API_KEY",   # <-- replace later
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+
+        requests.post(url, data=payload, headers=headers)
+    except:
+        print("SMS Failed")
 
 # ---------- HOME ----------
 @app.route("/")
@@ -100,7 +126,6 @@ def register():
         phone = request.form["phone"]
         address = request.form["address"]
 
-        # validation
         if len(phone) != 10 or not phone.isdigit():
             return "Invalid Phone Number"
 
@@ -147,19 +172,26 @@ def admin_dashboard():
         time = current_time()
 
         cur.execute("""
-        INSERT INTO entries (farmer_phone, farmer_name, address, tractor, trip, entry_no, token, time)
-        VALUES (?,?,?,?,?,?,?,?)
+        INSERT INTO entries 
+        (farmer_phone, farmer_name, address, tractor, trip, driver_name, driver_phone, entry_no, token, time)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
         """, (
             request.form["phone"],
             request.form["name"],
             request.form["address"],
             request.form["tractor"],
             request.form["trip"],
+            request.form["driver_name"],
+            request.form["driver_phone"],
             entry_no,
             token,
             time
         ))
         conn.commit()
+
+        # SEND SMS
+        msg = f"Trip No: {request.form['trip']} | Tractor: {request.form['tractor']}"
+        send_sms(request.form["driver_phone"], msg)
 
     cur.execute("SELECT * FROM entries ORDER BY id DESC")
     data = cur.fetchall()
@@ -196,6 +228,18 @@ def office_dashboard():
     conn.close()
 
     return render_template("office_dashboard.html", data=data)
+
+# ---------- SEARCH (DRIVER PHONE API) ----------
+@app.route("/search_driver/<phone>")
+def search_driver(phone):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM entries WHERE driver_phone=?", (phone,))
+    data = cur.fetchall()
+
+    conn.close()
+    return jsonify(data)
 
 # ---------- LOGOUT ----------
 @app.route("/logout")
