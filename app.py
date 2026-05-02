@@ -4,14 +4,16 @@ import random
 import datetime
 import os
 
+# 👇 OCR FILE IMPORT (IMPORTANT)
+from detect_ocr import detect_number_plate   # function should return detected number
+
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# ---------- DATABASE PATH FIX (IMPORTANT FOR RENDER) ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "database.db")
 
-# ---------- DATABASE INIT ----------
+# ---------- DATABASE ----------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -33,9 +35,11 @@ def init_db():
         address TEXT,
         tractor TEXT,
         trip TEXT,
-        entry_no TEXT,
-        token TEXT,
-        time TEXT
+        driver_name TEXT,
+        driver_phone TEXT,
+        entry_no TEXT DEFAULT 'None',
+        token TEXT DEFAULT 'None',
+        time TEXT DEFAULT 'None'
     )
     """)
 
@@ -44,7 +48,7 @@ def init_db():
 
 init_db()
 
-# ---------- COMMON FUNCTIONS ----------
+# ---------- FUNCTIONS ----------
 def generate_entry():
     return "E" + str(random.randint(1000,9999))
 
@@ -100,21 +104,14 @@ def register():
         phone = request.form["phone"]
         address = request.form["address"]
 
-        # validation
-        if len(phone) != 10 or not phone.isdigit():
-            return "Invalid Phone Number"
-
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
 
-        try:
-            cur.execute("INSERT INTO farmers (name, phone, address) VALUES (?,?,?)",
-                        (name, phone, address))
-            conn.commit()
-        except:
-            return "Phone already exists"
-
+        cur.execute("INSERT INTO farmers (name, phone, address) VALUES (?,?,?)",
+                    (name, phone, address))
+        conn.commit()
         conn.close()
+
         return redirect("/")
 
     return render_template("register.html")
@@ -142,22 +139,18 @@ def admin_dashboard():
     cur = conn.cursor()
 
     if request.method == "POST":
-        entry_no = generate_entry()
-        token = generate_token()
-        time = current_time()
-
         cur.execute("""
-        INSERT INTO entries (farmer_phone, farmer_name, address, tractor, trip, entry_no, token, time)
-        VALUES (?,?,?,?,?,?,?,?)
+        INSERT INTO entries 
+        (farmer_phone, farmer_name, address, tractor, trip, driver_name, driver_phone)
+        VALUES (?,?,?,?,?,?,?)
         """, (
             request.form["phone"],
             request.form["name"],
             request.form["address"],
             request.form["tractor"],
             request.form["trip"],
-            entry_no,
-            token,
-            time
+            request.form["driver_name"],
+            request.form["driver_phone"]
         ))
         conn.commit()
 
@@ -167,21 +160,35 @@ def admin_dashboard():
 
     return render_template("admin_dashboard.html", data=data)
 
-# ---------- FARMER DASHBOARD ----------
-@app.route("/farmer_dashboard")
-def farmer_dashboard():
-    if "farmer" not in session:
-        return redirect("/")
+# ---------- OCR MATCH API ----------
+@app.route("/detect")
+def detect():
+    detected_number = detect_number_plate()
 
-    phone = session["farmer"]
+    print("Detected:", detected_number)
 
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute("SELECT * FROM entries WHERE farmer_phone=? ORDER BY id DESC", (phone,))
-    data = cur.fetchall()
+
+    cur.execute("SELECT * FROM entries WHERE tractor=?", (detected_number,))
+    row = cur.fetchone()
+
+    if row:
+        entry = generate_entry()
+        token = generate_token()
+        time = current_time()
+
+        cur.execute("""
+        UPDATE entries SET entry_no=?, token=?, time=? WHERE id=?
+        """, (entry, token, time, row[0]))
+
+        conn.commit()
+
+        print("MATCH FOUND → Entry Generated")
+
     conn.close()
 
-    return render_template("farmer_dashboard.html", data=data)
+    return "Detection Done"
 
 # ---------- OFFICE DASHBOARD ----------
 @app.route("/office_dashboard")
@@ -197,12 +204,27 @@ def office_dashboard():
 
     return render_template("office_dashboard.html", data=data)
 
+# ---------- FARMER DASHBOARD ----------
+@app.route("/farmer_dashboard")
+def farmer_dashboard():
+    if "farmer" not in session:
+        return redirect("/")
+
+    phone = session["farmer"]
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM entries WHERE farmer_phone=?", (phone,))
+    data = cur.fetchall()
+    conn.close()
+
+    return render_template("farmer_dashboard.html", data=data)
+
 # ---------- LOGOUT ----------
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
 
-# ---------- RUN ----------
 if __name__ == "__main__":
     app.run(debug=True)
