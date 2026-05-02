@@ -1,7 +1,3 @@
-Flask
-gunicorn
+FFlask
 psycopg2-binary
-requests
-easyocr
-opencv-python-headless
-ultralytics
+gunicorn
