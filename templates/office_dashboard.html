@@ -2,9 +2,17 @@
 
 <table border="1">
 <tr>
-<th>ID</th><th>Farmer</th><th>Phone</th><th>Address</th>
-<th>Tractor</th><th>Trip</th><th>Driver</th><th>Driver Phone</th>
-<th>Entry</th><th>Token</th><th>Time</th><th>Print</th>
+<th>ID</th>
+<th>Name</th>
+<th>Phone</th>
+<th>Address</th>
+<th>Tractor</th>
+<th>Trip</th>
+<th>Driver</th>
+<th>Driver Phone</th>
+<th>Entry</th>
+<th>Token</th>
+<th>Time</th>
 </tr>
 
 {% for row in data %}
@@ -20,7 +28,7 @@
 <td>{{row[8]}}</td>
 <td>{{row[9]}}</td>
 <td>{{row[10]}}</td>
-<td><a href="/print/{{row[0]}}">Print</a></td>
 </tr>
 {% endfor %}
+
 </table>
