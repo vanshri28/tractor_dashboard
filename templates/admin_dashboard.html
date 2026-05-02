@@ -1,21 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Dashboard</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:linear-gradient(#1e3c72,#2a5298);
+color:white;
+}
+
+.container{
+width:80%;
+margin:30px auto;
+text-align:center;
+}
+
+form{
+background:white;
+color:black;
+padding:20px;
+border-radius:10px;
+margin-bottom:20px;
+}
+
+input{
+padding:10px;
+margin:5px;
+}
+
+button{
+padding:10px;
+background:green;
+color:white;
+border:none;
+}
+
+table{
+width:100%;
+background:white;
+color:black;
+border-collapse:collapse;
+}
+
+th,td{
+padding:10px;
+border:1px solid #ddd;
+}
+</style>
+
+<script>
+function fetchFarmer(){
+let phone=document.getElementById("phone").value;
+fetch("/get_farmer/"+phone)
+.then(res=>res.json())
+.then(data=>{
+document.getElementById("name").value=data.name;
+document.getElementById("address").value=data.address;
+});
+}
+</script>
+
+</head>
+
+<body>
+
+<div class="container">
+
 <h2>Admin Dashboard</h2>
+<a href="/logout">Logout</a>
 
-<form method="POST" action="/fetch">
-<input name="phone" placeholder="Enter Phone">
-<button>Fetch</button>
-</form>
+<form method="POST">
+<input id="phone" name="phone" placeholder="Phone">
+<button type="button" onclick="fetchFarmer()">Fetch</button><br>
 
-{% if data %}
-<form method="POST" action="/add_entry">
-<input type="hidden" name="phone" value="{{data[2]}}">
-<input value="{{data[1]}}" readonly><br>
-<input value="{{data[3]}}" readonly><br>
+<input id="name" name="name" placeholder="Name">
+<input id="address" name="address" placeholder="Address"><br>
 
-<input name="tractor" placeholder="Tractor Number"><br>
+<input name="tractor" placeholder="Tractor">
 <input name="trip" placeholder="Trip"><br>
-<input name="driver" placeholder="Driver"><br>
-<input name="driver_phone" placeholder="Driver Phone"><br>
 
-<button>Submit</button>
+<button type="submit">Submit</button>
 </form>
-{% endif %}
+
+<table>
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Phone</th>
+<th>Tractor</th>
+<th>Trip</th>
+<th>Entry</th>
+<th>Token</th>
+<th>Time</th>
+</tr>
+
+{% for row in data %}
+<tr>
+<td>{{row[0]}}</td>
+<td>{{row[2]}}</td>
+<td>{{row[1]}}</td>
+<td>{{row[4]}}</td>
+<td>{{row[5]}}</td>
+<td>{{row[6]}}</td>
+<td>{{row[7]}}</td>
+<td>{{row[8]}}</td>
+</tr>
+{% endfor %}
+
+</table>
+
+</div>
+
+</body>
+</html>
