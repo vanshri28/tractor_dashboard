@@ -1,71 +1,26 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Office</title>
-<style>
-body {
-background: linear-gradient(#0f2027, #203a43, #2c5364);
-color:white;
-text-align:center;
-font-family:Arial;
-}
-table{
-width:95%;
-margin:auto;
-background:white;
-color:black;
-border-collapse:collapse;
-}
-th,td{padding:10px;border:1px solid #ddd;}
-th{background:#2c5364;color:white;}
-input{padding:10px;width:250px;}
-button{padding:10px;background:green;color:white;border:none;}
-</style>
-</head>
+<h2>Office Dashboard</h2>
 
-<body>
-
-<h1>Office Dashboard</h1>
-
-<form action="/search" method="POST">
-<input name="phone" placeholder="Search by Driver Phone">
-<button>Search</button>
-</form>
-
-<table>
+<table border="1">
 <tr>
-<th>ID</th>
-<th>Farmer</th>
-<th>Phone</th>
-<th>Address</th>
-<th>Tractor</th>
-<th>Trip</th>
-<th>Driver</th>
-<th>Driver Phone</th>
-<th>Entry</th>
-<th>Token</th>
-<th>Time</th>
-<th>Print</th>
+<th>ID</th><th>Farmer</th><th>Phone</th><th>Address</th>
+<th>Tractor</th><th>Trip</th><th>Driver</th><th>Driver Phone</th>
+<th>Entry</th><th>Token</th><th>Time</th><th>Print</th>
 </tr>
 
 {% for row in data %}
 <tr>
-<td>{{row.id}}</td>
-<td>{{row.name}}</td>
-<td>{{row.phone}}</td>
-<td>{{row.address}}</td>
-<td>{{row.tractor}}</td>
-<td>{{row.trip}}</td>
-<td>{{row.driver}}</td>
-<td>{{row.driver_phone}}</td>
-<td>{{row.entry}}</td>
-<td>{{row.token}}</td>
-<td>{{row.time}}</td>
-<td><button>Print</button></td>
+<td>{{row[0]}}</td>
+<td>{{row[1]}}</td>
+<td>{{row[2]}}</td>
+<td>{{row[3]}}</td>
+<td>{{row[4]}}</td>
+<td>{{row[5]}}</td>
+<td>{{row[6]}}</td>
+<td>{{row[7]}}</td>
+<td>{{row[8]}}</td>
+<td>{{row[9]}}</td>
+<td>{{row[10]}}</td>
+<td><a href="/print/{{row[0]}}">Print</a></td>
 </tr>
 {% endfor %}
-
 </table>
-
-</body>
-</html>
