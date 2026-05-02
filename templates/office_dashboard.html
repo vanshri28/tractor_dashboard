@@ -57,32 +57,23 @@ border-radius:5px;
 function printSlip(data){
     let slip = `
     <html>
-    <head>
-    <style>
-    body{font-family:monospace; padding:20px;}
-    h3{text-align:center;}
-    </style>
-    </head>
-    <body>
-
-    <h3>Shree Sugar Factory</h3>
-    <p>-----------------------------------</p>
-    <p>Name: ${data.name}</p>
-    <p>Phone: ${data.phone}</p>
-    <p>Address: ${data.address}</p>
-    <p>Tractor: ${data.tractor}</p>
-    <p>Trip: ${data.trip}</p>
-    <p>Driver: ${data.driver}</p>
-    <p>Driver Phone: ${data.driver_phone}</p>
-    <p>Entry No: ${data.entry}</p>
-    <p>Token No: ${data.token}</p>
-    <p>Time: ${data.time}</p>
-    <p>-----------------------------------</p>
-
+    <body style="font-family:monospace; padding:20px;">
+    <h3 style="text-align:center;">Sugar Factory Slip</h3>
+    <hr>
+    Name: ${data.name}<br>
+    Phone: ${data.phone}<br>
+    Address: ${data.address}<br>
+    Tractor: ${data.tractor}<br>
+    Trip: ${data.trip}<br>
+    Driver: ${data.driver}<br>
+    Driver Phone: ${data.driver_phone}<br>
+    Entry: ${data.entry}<br>
+    Token: ${data.token}<br>
+    Time: ${data.time}<br>
+    <hr>
     </body>
     </html>
     `;
-
     let win = window.open('', '', 'width=300,height=400');
     win.document.write(slip);
     win.document.close();
@@ -96,6 +87,7 @@ function printSlip(data){
 
 <div class="container">
 
+<!-- ✅ LOGOUT -->
 <div style="text-align:right;">
     <a href="/logout">
         <button style="background:red;">Logout</button>
