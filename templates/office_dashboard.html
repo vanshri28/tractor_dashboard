@@ -1,3 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Office Dashboard</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:linear-gradient(rgba(0,0,0,0.6),rgba(0,0,0,0.6)),
+url("https://images.unsplash.com/photo-1500382017468-9049fed747ef");
+background-size:cover;
+color:white;
+}
+
+.container{
+width:85%;
+margin:30px auto;
+background:rgba(255,255,255,0.15);
+padding:25px;
+border-radius:15px;
+backdrop-filter:blur(10px);
+}
+
+h2{text-align:center;}
+
+table{
+width:100%;
+margin-top:20px;
+background:white;
+color:black;
+border-collapse:collapse;
+}
+
+th{
+background:#2c3e50;
+color:white;
+padding:10px;
+}
+
+td{
+padding:10px;
+text-align:center;
+border:1px solid #ddd;
+}
+
+button{
+padding:5px 10px;
+background:#27ae60;
+color:white;
+border:none;
+cursor:pointer;
+border-radius:5px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Office Dashboard</h2>
+
 <table>
 <tr>
 <th>ID</th>
@@ -30,4 +94,10 @@
 <td><button onclick="window.print()">Print</button></td>
 </tr>
 {% endfor %}
+
 </table>
+
+</div>
+
+</body>
+</html>
