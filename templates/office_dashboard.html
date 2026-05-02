@@ -32,16 +32,15 @@ color:black;
 border-collapse:collapse;
 }
 
+th,td{
+padding:10px;
+border:1px solid #ddd;
+text-align:center;
+}
+
 th{
 background:#2c3e50;
 color:white;
-padding:10px;
-}
-
-td{
-padding:10px;
-text-align:center;
-border:1px solid #ddd;
 }
 
 button{
@@ -54,11 +53,54 @@ border-radius:5px;
 }
 </style>
 
+<script>
+function printSlip(data){
+    let slip = `
+    <html>
+    <head>
+    <style>
+    body{font-family:monospace; padding:20px;}
+    h3{text-align:center;}
+    </style>
+    </head>
+    <body>
+
+    <h3>Shree Sugar Factory</h3>
+    <p>-----------------------------------</p>
+    <p>Name: ${data.name}</p>
+    <p>Phone: ${data.phone}</p>
+    <p>Address: ${data.address}</p>
+    <p>Tractor: ${data.tractor}</p>
+    <p>Trip: ${data.trip}</p>
+    <p>Driver: ${data.driver}</p>
+    <p>Driver Phone: ${data.driver_phone}</p>
+    <p>Entry No: ${data.entry}</p>
+    <p>Token No: ${data.token}</p>
+    <p>Time: ${data.time}</p>
+    <p>-----------------------------------</p>
+
+    </body>
+    </html>
+    `;
+
+    let win = window.open('', '', 'width=300,height=400');
+    win.document.write(slip);
+    win.document.close();
+    win.print();
+}
+</script>
+
 </head>
 
 <body>
 
 <div class="container">
+
+<div style="text-align:right;">
+    <a href="/logout">
+        <button style="background:red;">Logout</button>
+    </a>
+</div>
 
 <h2>Office Dashboard</h2>
 
@@ -91,7 +133,22 @@ border-radius:5px;
 <td>{{row[8]}}</td>
 <td>{{row[9]}}</td>
 <td>{{row[10]}}</td>
-<td><button onclick="window.print()">Print</button></td>
+
+<td>
+<button onclick='printSlip({
+name:"{{row[2]}}",
+phone:"{{row[1]}}",
+address:"{{row[3]}}",
+tractor:"{{row[4]}}",
+trip:"{{row[5]}}",
+driver:"{{row[6]}}",
+driver_phone:"{{row[7]}}",
+entry:"{{row[8]}}",
+token:"{{row[9]}}",
+time:"{{row[10]}}"
+})'>Print</button>
+</td>
+
 </tr>
 {% endfor %}
 
