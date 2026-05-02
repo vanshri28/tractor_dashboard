@@ -9,7 +9,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-# Create table
+# DB INIT
 def init_db():
     conn = get_db()
     conn.execute("""
@@ -31,14 +31,13 @@ def init_db():
 
 init_db()
 
-# ------------------ ROUTES ------------------
+# ---------------- ROUTES ----------------
 
 @app.route('/')
 def index():
     return render_template("index.html")
 
-# ------------------ REGISTER ------------------
-
+# REGISTER
 @app.route('/register', methods=['GET','POST'])
 def register():
     if request.method == 'POST':
@@ -49,8 +48,8 @@ def register():
         conn = get_db()
         conn.execute("""
         INSERT INTO records (name, phone, address, tractor, trip, driver, driver_phone, entry, token, time)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (name, phone, address, "", "", name, phone, "None", "None",
+        VALUES (?, ?, ?, '', '', ?, ?, 'None', 'None', ?)
+        """, (name, phone, address, name, phone,
               datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
         conn.commit()
@@ -58,8 +57,7 @@ def register():
 
     return render_template("register.html")
 
-# ------------------ ADMIN ------------------
-
+# ADMIN
 @app.route('/admin_dashboard', methods=['GET','POST'])
 def admin():
     conn = get_db()
@@ -73,17 +71,16 @@ def admin():
 
         conn.execute("""
         UPDATE records SET 
-        tractor=?, trip=?, driver=?, driver_phone=?
+        address=?, tractor=?, trip=?, driver=?, driver_phone=?
         WHERE phone=?
-        """, (tractor, trip, name, phone, phone))
+        """, (address, tractor, trip, name, phone, phone))
 
         conn.commit()
 
     data = conn.execute("SELECT * FROM records").fetchall()
     return render_template("admin_dashboard.html", data=data)
 
-# ------------------ OFFICE ------------------
-
+# OFFICE
 @app.route('/office_dashboard')
 def office():
     conn = get_db()
@@ -102,15 +99,13 @@ def search():
 
     return render_template("office_dashboard.html", data=data)
 
-# ------------------ FARMER ------------------
-
+# FARMER
 @app.route('/farmer_dashboard')
 def farmer():
     conn = get_db()
     data = conn.execute("SELECT * FROM records").fetchall()
     return render_template("farmer_dashboard.html", data=data)
 
-
-# ------------------ RUN ------------------
+# RUN
 if __name__ == "__main__":
     app.run(debug=True)
