@@ -1,111 +1,130 @@
-from flask import Flask, render_template, request, redirect
-import sqlite3
+from flask import Flask, render_template, request, redirect, session, jsonify
+import psycopg2
+import os
 from datetime import datetime
 
 app = Flask(__name__)
+app.secret_key = "secret"
 
-def get_db():
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    return conn
+DATABASE_URL = os.environ.get("DATABASE_URL")
+conn = psycopg2.connect(DATABASE_URL)
+cur = conn.cursor()
 
-# DB INIT
-def init_db():
-    conn = get_db()
-    conn.execute("""
-    CREATE TABLE IF NOT EXISTS records (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        phone TEXT,
-        address TEXT,
-        tractor TEXT,
-        trip TEXT,
-        driver TEXT,
-        driver_phone TEXT,
-        entry TEXT,
-        token TEXT,
-        time TEXT
-    )
-    """)
-    conn.commit()
+# ------------------ TABLE ------------------
+cur.execute("""
+CREATE TABLE IF NOT EXISTS farmers (
+    id SERIAL PRIMARY KEY,
+    farmer TEXT,
+    phone TEXT,
+    address TEXT,
+    tractor TEXT,
+    trip TEXT,
+    driver TEXT,
+    driver_phone TEXT,
+    entry INTEGER,
+    token INTEGER,
+    time TEXT
+)
+""")
+conn.commit()
 
-init_db()
-
-# ---------------- ROUTES ----------------
-
+# ------------------ LOGIN PAGE ------------------
 @app.route('/')
 def index():
     return render_template("index.html")
 
-# REGISTER
+# ------------------ FARMER REGISTER ------------------
 @app.route('/register', methods=['GET','POST'])
 def register():
     if request.method == 'POST':
-        name = request.form['name']
+        farmer = request.form['farmer']
         phone = request.form['phone']
         address = request.form['address']
 
-        conn = get_db()
-        conn.execute("""
-        INSERT INTO records (name, phone, address, tractor, trip, driver, driver_phone, entry, token, time)
-        VALUES (?, ?, ?, '', '', ?, ?, 'None', 'None', ?)
-        """, (name, phone, address, name, phone,
-              datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-
+        cur.execute("""
+        INSERT INTO farmers (farmer, phone, address)
+        VALUES (%s,%s,%s)
+        """,(farmer,phone,address))
         conn.commit()
-        return redirect('/')
 
+        return redirect('/')
     return render_template("register.html")
 
-# ADMIN
+# ------------------ ADMIN LOGIN ------------------
+@app.route('/admin_login', methods=['POST'])
+def admin_login():
+    if request.form['username']=="admin" and request.form['password']=="admin123":
+        return redirect('/admin_dashboard')
+    return "Invalid"
+
+# ------------------ OFFICE LOGIN ------------------
+@app.route('/office_login', methods=['POST'])
+def office_login():
+    if request.form['username']=="office" and request.form['password']=="office123":
+        return redirect('/office_dashboard')
+    return "Invalid"
+
+# ------------------ ADMIN DASHBOARD ------------------
 @app.route('/admin_dashboard', methods=['GET','POST'])
 def admin():
-    conn = get_db()
+    data=None
 
-    if request.method == 'POST':
-        name = request.form['name']
-        phone = request.form['phone']
-        address = request.form['address']
-        tractor = request.form['tractor']
-        trip = request.form['trip']
+    if request.method=='POST':
+        phone=request.form['phone']
 
-        conn.execute("""
-        UPDATE records SET 
-        address=?, tractor=?, trip=?, driver=?, driver_phone=?
-        WHERE phone=?
-        """, (address, tractor, trip, name, phone, phone))
+        cur.execute("SELECT * FROM farmers WHERE phone=%s",(phone,))
+        data=cur.fetchone()
 
-        conn.commit()
+        if 'submit' in request.form:
+            tractor=request.form['tractor'].replace(" ","").upper()
+            trip=request.form['trip']
+            driver=request.form['driver']
+            driver_phone=request.form['driver_phone']
 
-    data = conn.execute("SELECT * FROM records").fetchall()
+            cur.execute("""
+            UPDATE farmers SET tractor=%s,trip=%s,driver=%s,driver_phone=%s
+            WHERE phone=%s
+            """,(tractor,trip,driver,driver_phone,phone))
+            conn.commit()
+
     return render_template("admin_dashboard.html", data=data)
 
-# OFFICE
+# ------------------ OFFICE DASHBOARD ------------------
 @app.route('/office_dashboard')
 def office():
-    conn = get_db()
-    data = conn.execute("SELECT * FROM records ORDER BY id DESC").fetchall()
+    cur.execute("SELECT * FROM farmers ORDER BY id ASC")
+    data=cur.fetchall()
     return render_template("office_dashboard.html", data=data)
 
-# SEARCH
-@app.route('/search', methods=['POST'])
-def search():
-    phone = request.form['phone']
-    conn = get_db()
+# ------------------ MATCH API ------------------
+@app.route('/check_plate', methods=['POST'])
+def check_plate():
+    plate=request.json['plate']
+    plate=plate.replace(" ","").upper()
 
-    data = conn.execute("""
-    SELECT * FROM records WHERE driver_phone LIKE ?
-    """, ('%' + phone + '%',)).fetchall()
+    cur.execute("SELECT * FROM farmers WHERE tractor=%s",(plate,))
+    row=cur.fetchone()
 
-    return render_template("office_dashboard.html", data=data)
+    if row:
+        entry=row[0]
+        token=row[0]
+        time=datetime.now().strftime("%H:%M:%S")
 
-# FARMER
-@app.route('/farmer_dashboard')
-def farmer():
-    conn = get_db()
-    data = conn.execute("SELECT * FROM records").fetchall()
-    return render_template("farmer_dashboard.html", data=data)
+        cur.execute("""
+        UPDATE farmers SET entry=%s,token=%s,time=%s WHERE tractor=%s
+        """,(entry,token,time,plate))
+        conn.commit()
 
-# RUN
+        return jsonify({"status":"MATCH"})
+    else:
+        return jsonify({"status":"NOT MATCH"})
+
+# ------------------ PRINT ------------------
+@app.route('/print/<int:id>')
+def print_page(id):
+    cur.execute("SELECT * FROM farmers WHERE id=%s",(id,))
+    data=cur.fetchone()
+    return render_template("print.html",data=data)
+
 if __name__ == "__main__":
     app.run(debug=True)
