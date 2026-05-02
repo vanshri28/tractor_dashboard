@@ -1,10 +1,79 @@
-<h2>{{data[1]}}</h2>
-<p>{{data[2]}}</p>
-<p>{{data[3]}}</p>
+<!DOCTYPE html>
+<html>
+<head>
+<title>Farmer Dashboard</title>
 
-<p>Tractor: {{data[4]}}</p>
-<p>Trip: {{data[5]}}</p>
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:linear-gradient(#11998e,#38ef7d);
+color:white;
+}
 
-<p>Entry: {{data[8]}}</p>
-<p>Token: {{data[9]}}</p>
-<p>Time: {{data[10]}}</p>
+.container{
+width:70%;
+margin:30px auto;
+text-align:center;
+}
+
+.table-box{
+background:white;
+color:black;
+padding:20px;
+border-radius:10px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th{
+background:#16a085;
+color:white;
+padding:10px;
+}
+
+td{
+padding:10px;
+text-align:center;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Your Trips</h2>
+<a href="/logout">Logout</a>
+
+<div class="table-box">
+<table>
+<tr>
+<th>Tractor</th>
+<th>Trip</th>
+<th>Entry</th>
+<th>Token</th>
+<th>Time</th>
+</tr>
+
+{% for row in data %}
+<tr>
+<td>{{row[4]}}</td>
+<td>{{row[5]}}</td>
+<td>{{row[6]}}</td>
+<td>{{row[7]}}</td>
+<td>{{row[8]}}</td>
+</tr>
+{% endfor %}
+
+</table>
+</div>
+
+</div>
+
+</body>
+</html>
