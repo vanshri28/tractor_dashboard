@@ -1,32 +1,10 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Farmer</title>
-<style>
-body{text-align:center;font-family:Arial;}
-table{margin:auto;border-collapse:collapse;}
-th,td{padding:10px;border:1px solid black;}
-</style>
-</head>
+<h2>{{data[1]}}</h2>
+<p>{{data[2]}}</p>
+<p>{{data[3]}}</p>
 
-<body>
+<p>Tractor: {{data[4]}}</p>
+<p>Trip: {{data[5]}}</p>
 
-<h1>Farmer Dashboard</h1>
-
-<table>
-<tr>
-<th>Name</th><th>Tractor</th><th>Trip</th>
-</tr>
-
-{% for row in data %}
-<tr>
-<td>{{row.name}}</td>
-<td>{{row.tractor}}</td>
-<td>{{row.trip}}</td>
-</tr>
-{% endfor %}
-
-</table>
-
-</body>
-</html>
+<p>Entry: {{data[8]}}</p>
+<p>Token: {{data[9]}}</p>
+<p>Time: {{data[10]}}</p>
