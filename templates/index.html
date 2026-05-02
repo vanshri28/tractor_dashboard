@@ -1,18 +1,43 @@
-<h2>Login</h2>
+<!DOCTYPE html>
+<html>
+<head>
+<title>Login</title>
+<style>
+body {font-family: Arial; text-align:center; background:url('https://images.unsplash.com/photo-1500382017468-9049fed747ef'); background-size:cover;}
+.box {background:white;padding:20px;margin:50px auto;width:300px;border-radius:10px;}
+</style>
+</head>
 
+<body>
+
+<h1>Smart Tractor System</h1>
+
+<div class="box">
 <h3>Admin</h3>
 <form method="POST" action="/admin_login">
-<input name="username">
-<input name="password">
+<input name="username" placeholder="Username"><br><br>
+<input name="password" placeholder="Password"><br><br>
 <button>Login</button>
 </form>
+</div>
 
+<div class="box">
 <h3>Farmer</h3>
+<form method="POST" action="/farmer_login">
+<input name="phone" placeholder="Phone"><br><br>
+<button>Login</button>
+</form>
 <a href="/register">Register</a>
+</div>
 
+<div class="box">
 <h3>Office</h3>
 <form method="POST" action="/office_login">
-<input name="username">
-<input name="password">
+<input name="username"><br><br>
+<input name="password"><br><br>
 <button>Login</button>
 </form>
+</div>
+
+</body>
+</html>
