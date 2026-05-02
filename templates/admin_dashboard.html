@@ -1,3 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Dashboard</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:linear-gradient(rgba(0,0,0,0.6),rgba(0,0,0,0.6)),
+url("https://images.unsplash.com/photo-1500382017468-9049fed747ef");
+background-size:cover;
+height:100vh;
+color:white;
+}
+
+.container{
+width:70%;
+margin:40px auto;
+background:rgba(255,255,255,0.15);
+padding:30px;
+border-radius:15px;
+backdrop-filter:blur(10px);
+}
+
+h2{text-align:center;}
+
+form{
+text-align:center;
+margin-bottom:20px;
+}
+
+input{
+padding:10px;
+margin:8px;
+width:200px;
+border:none;
+border-radius:5px;
+}
+
+button{
+padding:10px 15px;
+background:#27ae60;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+table{
+width:100%;
+margin-top:20px;
+background:white;
+color:black;
+border-collapse:collapse;
+}
+
+th,td{
+padding:10px;
+border:1px solid #ddd;
+text-align:center;
+}
+
+th{
+background:#2c3e50;
+color:white;
+}
+</style>
+
+<script>
+function fetchFarmer(){
+let phone=document.getElementById("phone").value;
+
+fetch("/get_farmer/"+phone)
+.then(res=>res.json())
+.then(data=>{
+if(data.error){
+alert("Farmer not found");
+}else{
+document.getElementById("name").value=data.name;
+document.getElementById("address").value=data.address;
+}
+});
+}
+</script>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Admin Dashboard</h2>
+
 <form method="POST">
 <input id="phone" name="phone" placeholder="Phone">
 <button type="button" onclick="fetchFarmer()">Fetch</button><br>
@@ -32,4 +126,10 @@
 <td>{{row[5]}}</td>
 </tr>
 {% endfor %}
+
 </table>
+
+</div>
+
+</body>
+</html>
