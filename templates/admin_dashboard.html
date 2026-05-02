@@ -1,21 +1,21 @@
 <h2>Admin Dashboard</h2>
 
-<form method="POST">
-<input name="phone" placeholder="Phone">
+<form method="POST" action="/fetch">
+<input name="phone" placeholder="Enter Phone">
 <button>Fetch</button>
 </form>
 
 {% if data %}
-<form method="POST">
+<form method="POST" action="/add_entry">
 <input type="hidden" name="phone" value="{{data[2]}}">
-<input value="{{data[1]}}" readonly>
-<input value="{{data[3]}}" readonly>
+<input value="{{data[1]}}" readonly><br>
+<input value="{{data[3]}}" readonly><br>
 
-<input name="tractor" placeholder="Tractor">
-<input name="trip" placeholder="Trip">
-<input name="driver" placeholder="Driver">
-<input name="driver_phone" placeholder="Driver Phone">
+<input name="tractor" placeholder="Tractor Number"><br>
+<input name="trip" placeholder="Trip"><br>
+<input name="driver" placeholder="Driver"><br>
+<input name="driver_phone" placeholder="Driver Phone"><br>
 
-<button name="submit">Submit</button>
+<button>Submit</button>
 </form>
 {% endif %}
