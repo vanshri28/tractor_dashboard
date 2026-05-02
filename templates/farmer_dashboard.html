@@ -47,8 +47,14 @@ text-align:center;
 
 <div class="container">
 
+<!-- ✅ LOGOUT -->
+<div style="text-align:right;">
+    <a href="/logout">
+        <button style="background:red;">Logout</button>
+    </a>
+</div>
+
 <h2>Your Trips</h2>
-<a href="/logout">Logout</a>
 
 <div class="table-box">
 <table>
@@ -69,7 +75,6 @@ text-align:center;
 <td>{{row[8]}}</td>
 </tr>
 {% endfor %}
-
 </table>
 </div>
 
