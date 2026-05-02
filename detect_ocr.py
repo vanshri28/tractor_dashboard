@@ -1,65 +1,76 @@
 import cv2
-from ultralytics import YOLO
 import easyocr
-import requests
+import numpy as np
+import re
 
-# -------- LOAD MODEL --------
-model = YOLO("best.pt")
-
-# -------- OCR --------
+# OCR Reader (CPU mode)
 reader = easyocr.Reader(['en'], gpu=False)
 
-# -------- IMAGE PATH --------
-image_path = "test1.jpg"   # 👈 तुझी image इथे change करू शकतेस
 
-# -------- LOAD IMAGE --------
-img = cv2.imread(image_path)
+def clean_text(text):
+    # Remove unwanted characters
+    text = re.sub(r'[^A-Z0-9]', '', text)
+    return text
 
-if img is None:
-    print("❌ Image not found. Check path.")
-    exit()
 
-# -------- DETECTION --------
-results = model(img)
+def detect_number_plate(image_path="test1.jpg"):
 
-plate_found = False
+    # ---------- LOAD IMAGE ----------
+    img = cv2.imread(image_path)
 
-for r in results:
-    for box in r.boxes:
-        x1, y1, x2, y2 = map(int, box.xyxy[0])
+    if img is None:
+        print("❌ Image not found:", image_path)
+        return None
 
-        # crop number plate
-        plate = img[y1:y2, x1:x2]
+    # ---------- PREPROCESS ----------
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blur = cv2.bilateralFilter(gray, 11, 17, 17)
+    edged = cv2.Canny(blur, 30, 200)
 
-        # OCR
-        ocr_result = reader.readtext(plate)
+    # ---------- FIND CONTOURS ----------
+    contours, _ = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:10]
 
-        for res in ocr_result:
-            plate_text = res[1].replace(" ", "").upper()
+    plate_img = None
 
-            print("\n🔍 Detected Plate:", plate_text)
+    for cnt in contours:
+        approx = cv2.approxPolyDP(cnt, 0.018 * cv2.arcLength(cnt, True), True)
 
-            plate_found = True
+        if len(approx) == 4:  # rectangle
+            x, y, w, h = cv2.boundingRect(cnt)
 
-            # -------- API CALL --------
-            try:
-                response = requests.post(
-                       "https://tractor-dashboard-z05m.onrender.com/check_plate",
-                        json={"plate": plate_text}
-                )
+            # filter small regions
+            if w > 100 and h > 30:
+                plate_img = gray[y:y+h, x:x+w]
+                break
 
-                data = response.json()
+    # ---------- FALLBACK ----------
+    if plate_img is None:
+        print("⚠️ Plate not detected, using full image")
+        plate_img = gray
 
-                if data["status"] == "MATCH":
-                    print("✅ MATCH FOUND")
-                    print("🎫 Entry:", data["entry"])
-                    print("🎟 Token:", data["token"])
-                else:
-                    print("❌ NOT MATCH")
+    # ---------- OCR ----------
+    results = reader.readtext(plate_img)
 
-            except Exception as e:
-                print("⚠️ API Error:", e)
+    detected_text = ""
 
-# -------- NO PLATE --------
-if not plate_found:
-    print("❌ No number plate detected")
+    for (bbox, text, prob) in results:
+        detected_text += text + " "
+
+    detected_text = detected_text.strip().upper()
+    detected_text = clean_text(detected_text)
+
+    # ---------- OUTPUT ----------
+    print("✅ Detected Number Plate:", detected_text)
+
+    return detected_text
+
+
+# ---------- DIRECT RUN ----------
+if __name__ == "__main__":
+    number = detect_number_plate("test1.jpg")
+
+    if number:
+        print("🚜 FINAL OUTPUT:", number)
+    else:
+        print("❌ No number detected")
