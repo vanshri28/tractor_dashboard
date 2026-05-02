@@ -1,44 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Admin</title>
-<style>
-body{background:#2c5364;color:white;text-align:center;font-family:Arial;}
-input{padding:10px;margin:5px;}
-button{padding:10px;background:green;color:white;}
-table{margin:auto;background:white;color:black;}
-</style>
-</head>
-
-<body>
-
-<h1>Admin Dashboard</h1>
+<h2>Admin Dashboard</h2>
 
 <form method="POST">
-<input name="name" placeholder="Name">
 <input name="phone" placeholder="Phone">
-<input name="address" placeholder="Address">
-<input name="tractor" placeholder="Tractor">
-<input name="trip" placeholder="Trip">
-<button>Submit</button>
+<button>Fetch</button>
 </form>
 
-<table border="1">
-<tr>
-<th>ID</th><th>Name</th><th>Phone</th><th>Tractor</th><th>Trip</th>
-</tr>
+{% if data %}
+<form method="POST">
+<input type="hidden" name="phone" value="{{data[2]}}">
+<input value="{{data[1]}}" readonly>
+<input value="{{data[3]}}" readonly>
 
-{% for row in data %}
-<tr>
-<td>{{row.id}}</td>
-<td>{{row.name}}</td>
-<td>{{row.phone}}</td>
-<td>{{row.tractor}}</td>
-<td>{{row.trip}}</td>
-</tr>
-{% endfor %}
+<input name="tractor" placeholder="Tractor">
+<input name="trip" placeholder="Trip">
+<input name="driver" placeholder="Driver">
+<input name="driver_phone" placeholder="Driver Phone">
 
-</table>
-
-</body>
-</html>
+<button name="submit">Submit</button>
+</form>
+{% endif %}
