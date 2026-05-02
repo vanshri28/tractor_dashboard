@@ -2,51 +2,70 @@
 <html>
 <head>
 <title>Login</title>
+
 <style>
 body{
 background:url("https://images.unsplash.com/photo-1500382017468-9049fed747ef");
 background-size:cover;
-text-align:center;
 font-family:Arial;
+text-align:center;
 }
+
+.container{
+display:flex;
+justify-content:center;
+gap:40px;
+margin-top:150px;
+}
+
 .box{
-background:white;
+background:rgba(255,255,255,0.9);
 padding:20px;
-margin:100px auto;
-width:300px;
 border-radius:10px;
+width:250px;
 }
+
 input{
 padding:10px;
 width:90%;
 margin:5px;
 }
+
 button{
 padding:10px;
+width:100%;
 background:green;
 color:white;
 border:none;
+cursor:pointer;
 }
+
+a{text-decoration:none;}
 </style>
+
 </head>
 
 <body>
 
+<div class="container">
+
 <div class="box">
-<h2>Admin</h2>
+<h3>Admin</h3>
 <a href="/admin_dashboard"><button>Login</button></a>
 </div>
 
 <div class="box">
-<h2>Farmer</h2>
+<h3>Farmer</h3>
 <a href="/farmer_dashboard"><button>Login</button></a>
 <br><br>
 <a href="/register">Register</a>
 </div>
 
 <div class="box">
-<h2>Office</h2>
+<h3>Office</h3>
 <a href="/office_dashboard"><button>Login</button></a>
+</div>
+
 </div>
 
 </body>
