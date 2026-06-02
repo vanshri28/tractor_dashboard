@@ -148,7 +148,7 @@ def admin_dashboard():
         cur.execute("""
         INSERT INTO entries 
         (farmer_phone, farmer_name, address, tractor, trip, driver_name, driver_phone)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,)
+        VALUES (%s,%s,%s,%s,%s,%s,%s)
         """, (
             request.form["phone"],
             request.form["name"],
@@ -225,6 +225,18 @@ def farmer_dashboard():
     conn.close()
 
     return render_template("farmer_dashboard.html", data=data)
+
+@app.route("/db_test")
+def db_test():
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        cur.fetchone()
+        conn.close()
+        return "Database Connected Successfully ✅"
+    except Exception as e:
+        return str(e)
 
 # ---------- LOGOUT ----------
 @app.route("/logout")
