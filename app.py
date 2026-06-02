@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, session, jsonify
-import sqlite3
+import psycopg2
 import random
 import datetime
 import os
@@ -13,40 +13,43 @@ except:
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "database.db")
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+def get_connection():
+    return psycopg2.connect(DATABASE_URL)
 
 # ---------- DATABASE ----------
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cur = conn.cursor()
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS farmers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        phone TEXT UNIQUE,
-        address TEXT
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100),
+        phone VARCHAR(20) UNIQUE,
+        address VARCHAR(200)
     )
     """)
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS entries (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        farmer_phone TEXT,
-        farmer_name TEXT,
-        address TEXT,
-        tractor TEXT,
-        trip TEXT,
-        driver_name TEXT,
-        driver_phone TEXT,
-        entry_no TEXT DEFAULT 'None',
-        token TEXT DEFAULT 'None',
-        time TEXT DEFAULT 'None'
+        id SERIAL PRIMARY KEY,
+        farmer_phone VARCHAR(20),
+        farmer_name VARCHAR(100),
+        address VARCHAR(200),
+        tractor VARCHAR(50),
+        trip VARCHAR(50),
+        driver_name VARCHAR(100),
+        driver_phone VARCHAR(20),
+        entry_no VARCHAR(50) DEFAULT 'None',
+        token VARCHAR(50) DEFAULT 'None',
+        time VARCHAR(50) DEFAULT 'None'
     )
     """)
 
     conn.commit()
+    cur.close()
     conn.close()
 
 init_db()
@@ -87,9 +90,9 @@ def office_login():
 def farmer_login():
     phone = request.form["phone"]
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM farmers WHERE phone=?", (phone,))
+    cur.execute("SELECT * FROM farmers WHERE phone=%s", (phone,))
     farmer = cur.fetchone()
     conn.close()
 
@@ -107,10 +110,10 @@ def register():
         phone = request.form["phone"]
         address = request.form["address"]
 
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_connection()
         cur = conn.cursor()
 
-        cur.execute("INSERT INTO farmers (name, phone, address) VALUES (?,?,?)",
+        cur.execute("INSERT INTO farmers (name, phone, address) VALUES (%s,%s,%s)",
                     (name, phone, address))
         conn.commit()
         conn.close()
@@ -122,9 +125,9 @@ def register():
 # ---------- FETCH FARMER ----------
 @app.route("/get_farmer/<phone>")
 def get_farmer(phone):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT name,address FROM farmers WHERE phone=?", (phone,))
+    cur.execute("SELECT name,address FROM farmers WHERE phone=%s", (phone,))
     data = cur.fetchone()
     conn.close()
 
@@ -138,14 +141,14 @@ def admin_dashboard():
     if "admin" not in session:
         return redirect("/")
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cur = conn.cursor()
 
     if request.method == "POST":
         cur.execute("""
         INSERT INTO entries 
         (farmer_phone, farmer_name, address, tractor, trip, driver_name, driver_phone)
-        VALUES (?,?,?,?,?,?,?)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,)
         """, (
             request.form["phone"],
             request.form["name"],
@@ -170,10 +173,10 @@ def detect():
 
     print("Detected:", detected_number)
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT * FROM entries WHERE tractor=?", (detected_number,))
+    cur.execute("SELECT * FROM entries WHERE tractor=%s", (detected_number,))
     row = cur.fetchone()
 
     if row:
@@ -182,7 +185,7 @@ def detect():
         time = current_time()
 
         cur.execute("""
-        UPDATE entries SET entry_no=?, token=?, time=? WHERE id=?
+        UPDATE entries SET entry_no=%s, token=%s, time=%s WHERE id=%s
         """, (entry, token, time, row[0]))
 
         conn.commit()
@@ -199,7 +202,7 @@ def office_dashboard():
     if "office" not in session:
         return redirect("/")
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cur = conn.cursor()
     cur.execute("SELECT * FROM entries ORDER BY id DESC")
     data = cur.fetchall()
@@ -215,9 +218,9 @@ def farmer_dashboard():
 
     phone = session["farmer"]
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM entries WHERE farmer_phone=?", (phone,))
+    cur.execute("SELECT * FROM entries WHERE farmer_phone=%s", (phone,))
     data = cur.fetchall()
     conn.close()
 
