@@ -3,6 +3,7 @@ import psycopg
 import random
 import datetime
 import os
+from datetime import datetime
 
 # 👇 OCR FILE IMPORT (IMPORTANT)
 try:
@@ -159,6 +160,8 @@ def admin_dashboard():
             request.form["driver_phone"]
         ))
         conn.commit()
+        from datetime import datetime
+        current_time = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
 
     cur.execute("SELECT * FROM entries ORDER BY id DESC")
     data = cur.fetchall()
