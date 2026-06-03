@@ -146,20 +146,26 @@ def admin_dashboard():
     cur = conn.cursor()
 
     if request.method == "POST":
-        cur.execute("""
-        INSERT INTO entries 
-        (farmer_phone, farmer_name, address, tractor, trip, driver_name, driver_phone)
-        VALUES (%s,%s,%s,%s,%s,%s,%s)
-        """, (
-            request.form["phone"],
-            request.form["name"],
-            request.form["address"],
-            request.form["tractor"],
-            request.form["trip"],
-            request.form["driver_name"],
-            request.form["driver_phone"]
-        ))
-        conn.commit()
+
+    current_time = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+
+    cur.execute("""
+    INSERT INTO entries
+    (farmer_phone, farmer_name, address, tractor, trip,
+     driver_name, driver_phone, time)
+    VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+    """, (
+        request.form["phone"],
+        request.form["name"],
+        request.form["address"],
+        request.form["tractor"],
+        request.form["trip"],
+        request.form["driver_name"],
+        request.form["driver_phone"],
+        current_time
+    ))
+
+    conn.commit()
         from datetime import datetime
         current_time = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
 
