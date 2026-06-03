@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, session, jsonify
-import psycopg2
+import psycopg
 import random
 import datetime
 import os
@@ -16,7 +16,7 @@ app.secret_key = "secret123"
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_connection():
-    return psycopg2.connect(DATABASE_URL)
+    return psycopg.connect(DATABASE_URL)
 
 # ---------- DATABASE ----------
 def init_db():
