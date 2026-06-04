@@ -63,7 +63,7 @@ def generate_token():
     return "T" + str(random.randint(100,999))
 
 def current_time():
-    return datetime.datetime.now().strftime("%H:%M:%S")
+    return datetime.now().strftime("%H:%M:%S")
 
 # ---------- HOME ----------
 @app.route("/")
@@ -137,41 +137,56 @@ def get_farmer(phone):
     return jsonify({"error": "not found"})
 
 # ---------- ADMIN DASHBOARD ----------
+# ---------- ADMIN DASHBOARD ----------
 @app.route("/admin_dashboard", methods=["GET", "POST"])
 def admin_dashboard():
+
     if "admin" not in session:
         return redirect("/")
 
     conn = get_connection()
     cur = conn.cursor()
 
-   if request.method == "POST":
+    if request.method == "POST":
 
-    current_time = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+        current_time = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
 
-    cur.execute("""
-    INSERT INTO entries
-    (farmer_phone, farmer_name, address, tractor, trip,
-     driver_name, driver_phone, time)
-    VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-    """, (
-        request.form["phone"],
-        request.form["name"],
-        request.form["address"],
-        request.form["tractor"],
-        request.form["trip"],
-        request.form["driver_name"],
-        request.form["driver_phone"],
-        current_time
-    ))
+        cur.execute("""
+        INSERT INTO entries
+        (
+            farmer_phone,
+            farmer_name,
+            address,
+            tractor,
+            trip,
+            driver_name,
+            driver_phone,
+            time
+        )
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+        """,
+        (
+            request.form["phone"],
+            request.form["name"],
+            request.form["address"],
+            request.form["tractor"],
+            request.form["trip"],
+            request.form["driver_name"],
+            request.form["driver_phone"],
+            current_time
+        ))
 
-    conn.commit()
+        conn.commit()
 
     cur.execute("SELECT * FROM entries ORDER BY id DESC")
     data = cur.fetchall()
+
     conn.close()
 
-    return render_template("admin_dashboard.html", data=data)
+    return render_template(
+        "admin_dashboard.html",
+        data=data
+    )
 
 # ---------- OCR MATCH API ----------
 @app.route("/detect")
