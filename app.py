@@ -145,8 +145,9 @@ def admin_dashboard():
     conn = get_connection()
     cur = conn.cursor()
 
-    if request.method == "POST":
-        current_time = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+   if request.method == "POST":
+
+    current_time = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
 
     cur.execute("""
     INSERT INTO entries
@@ -165,8 +166,6 @@ def admin_dashboard():
     ))
 
     conn.commit()
-        from datetime import datetime
-        current_time = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
 
     cur.execute("SELECT * FROM entries ORDER BY id DESC")
     data = cur.fetchall()
@@ -217,6 +216,7 @@ def office_dashboard():
     conn.close()
 
     return render_template("office_dashboard.html", data=data)
+
 # ---------- add_detected_column ----------
 @app.route("/add_detected_column")
 def add_detected_column():
