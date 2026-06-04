@@ -146,8 +146,7 @@ def admin_dashboard():
     cur = conn.cursor()
 
     if request.method == "POST":
-
-    current_time = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+        current_time = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
 
     cur.execute("""
     INSERT INTO entries
