@@ -67,6 +67,7 @@ function printSlip(data){
     Trip: ${data.trip}<br>
     Driver: ${data.driver}<br>
     Driver Phone: ${data.driver_phone}<br>
+    Detected Number: ${data.detected_number}<br>
     Entry: ${data.entry}<br>
     Token: ${data.token}<br>
     Time: ${data.time}<br>
@@ -87,7 +88,6 @@ function printSlip(data){
 
 <div class="container">
 
-<!-- ✅ LOGOUT -->
 <div style="text-align:right;">
     <a href="/logout">
         <button style="background:red;">Logout</button>
@@ -106,6 +106,7 @@ function printSlip(data){
 <th>Trip</th>
 <th>Driver</th>
 <th>Driver Phone</th>
+<th>Detected Number Plate</th>
 <th>Entry</th>
 <th>Token</th>
 <th>Time</th>
@@ -122,9 +123,13 @@ function printSlip(data){
 <td>{{row[5]}}</td>
 <td>{{row[6]}}</td>
 <td>{{row[7]}}</td>
+
+<!-- Detected Number Plate -->
 <td>{{row[8]}}</td>
+
 <td>{{row[9]}}</td>
 <td>{{row[10]}}</td>
+<td>{{row[11]}}</td>
 
 <td>
 <button onclick='printSlip({
@@ -135,9 +140,10 @@ tractor:"{{row[4]}}",
 trip:"{{row[5]}}",
 driver:"{{row[6]}}",
 driver_phone:"{{row[7]}}",
-entry:"{{row[8]}}",
-token:"{{row[9]}}",
-time:"{{row[10]}}"
+detected_number:"{{row[8]}}",
+entry:"{{row[9]}}",
+token:"{{row[10]}}",
+time:"{{row[11]}}"
 })'>Print</button>
 </td>
 
