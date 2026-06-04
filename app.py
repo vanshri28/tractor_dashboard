@@ -218,7 +218,21 @@ def office_dashboard():
     conn.close()
 
     return render_template("office_dashboard.html", data=data)
+# ---------- add_detected_column ----------
+@app.route("/add_detected_column")
+def add_detected_column():
+    conn = get_connection()
+    cur = conn.cursor()
 
+    cur.execute("""
+        ALTER TABLE entries
+        ADD COLUMN detected_number VARCHAR(50)
+    """)
+
+    conn.commit()
+    conn.close()
+
+    return "Column Added Successfully"
 # ---------- FARMER DASHBOARD ----------
 @app.route("/farmer_dashboard")
 def farmer_dashboard():
