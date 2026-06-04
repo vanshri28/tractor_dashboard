@@ -35,18 +35,19 @@ def init_db():
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS entries (
-        id SERIAL PRIMARY KEY,
-        farmer_phone VARCHAR(20),
-        farmer_name VARCHAR(100),
-        address VARCHAR(200),
-        tractor VARCHAR(50),
-        trip VARCHAR(50),
-        driver_name VARCHAR(100),
-        driver_phone VARCHAR(20),
-        entry_no VARCHAR(50) DEFAULT 'None',
-        token VARCHAR(50) DEFAULT 'None',
-        time VARCHAR(50) DEFAULT 'None'
-    )
+    id SERIAL PRIMARY KEY,
+    farmer_phone VARCHAR(20),
+    farmer_name VARCHAR(100),
+    address VARCHAR(200),
+    tractor VARCHAR(50),
+    trip VARCHAR(50),
+    driver_name VARCHAR(100),
+    driver_phone VARCHAR(20),
+    detected_number VARCHAR(50) DEFAULT 'None',
+    entry_no VARCHAR(50) DEFAULT 'None',
+    token VARCHAR(50) DEFAULT 'None',
+    time VARCHAR(50) DEFAULT 'None'
+)
     """)
 
     conn.commit()
