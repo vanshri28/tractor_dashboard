@@ -20,7 +20,7 @@ def get_connection():
     return psycopg.connect(DATABASE_URL)
 
 # ---------- DATABASE ----------
-def init_db():s
+def init_db():
     conn = get_connection()
     cur = conn.cursor()
 
@@ -275,35 +275,32 @@ def db_test():
         return "Database Connected Successfully ✅"
     except Exception as e:
         return str(e)
-
+        
 @app.route("/update_plate", methods=["POST"])
 def update_plate():
-
     data = request.get_json()
     plate = data.get("plate")
-
     conn = get_connection()
     cur = conn.cursor()
-
     cur.execute("""
-        UPDATE entries
-        SET detected_number=%s
-        WHERE id = (
-            SELECT id
-            FROM entries
-            ORDER BY id DESC
-            LIMIT 1
-        )
+    UPDATE entries
+    SET detected_number=%s
+    WHERE id = (
+        SELECT id
+        FROM entries
+        ORDER BY id DESC
+        LIMIT 1
+    )
     """, (plate,))
-
     conn.commit()
     conn.close()
-
+    
     return jsonify({
         "status": "success",
         "plate": plate
     })
-    
+
+
 # ---------- LOGOUT ----------
 @app.route("/logout")
 def logout():
