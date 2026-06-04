@@ -285,42 +285,16 @@ def update_plate():
     conn = get_connection()
     cur = conn.cursor()
 
-    # latest row
     cur.execute("""
-        SELECT id, tractor
-        FROM entries
-        ORDER BY id DESC
-        LIMIT 1
-    """)
-
-    row = cur.fetchone()
-
-    if row:
-
-        row_id = row[0]
-        tractor_number = row[1]
-
-        # detected plate save
-        cur.execute("""
-            UPDATE entries
-            SET detected_number=%s
-            WHERE id=%s
-        """, (plate, row_id))
-
-        # match check
-        if tractor_number == plate:
-
-            entry_no = "E" + str(random.randint(1000,9999))
-            token_no = "T" + str(random.randint(100,999))
-            current = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
-
-            cur.execute("""
-                UPDATE entries
-                SET entry_no=%s,
-                    token=%s,
-                    time=%s
-                WHERE id=%s
-            """, (entry_no, token_no, current, row_id))
+        UPDATE entries
+        SET detected_number=%s
+        WHERE id = (
+            SELECT id
+            FROM entries
+            ORDER BY id DESC
+            LIMIT 1
+        )
+    """, (plate,))
 
     conn.commit()
     conn.close()
