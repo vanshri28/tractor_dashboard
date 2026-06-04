@@ -208,8 +208,8 @@ def detect():
         time = current_time()
 
         cur.execute("""
-        UPDATE entries SET entry_no=%s, token=%s, time=%s WHERE id=%s
-        """, (entry, token, time, row[0]))
+        UPDATE entries SET entry_no=%s, token=%s, time=%s,detected_number=%s WHERE id=%s
+        """, (entry, token, time, detected_number, row[0]))
 
         conn.commit()
 
@@ -276,6 +276,30 @@ def db_test():
     except Exception as e:
         return str(e)
 
+@app.route("/update_plate", methods=["POST"])
+def update_plate():
+    data = request.get_json()
+    plate = data.get("plate")
+    conn = get_connection()
+    
+    cur = conn.cursor()
+    cur.execute("""
+    UPDATE entries
+    SET detected_number=%s
+    WHERE id = (
+        SELECT id
+        FROM entries
+        ORDER BY id DESC
+        LIMIT 1
+    )
+    """, (plate,))
+    conn.commit()
+    conn.close
+    return jsonify({
+        "status": "success",
+        "plate": plate
+    })
+    
 # ---------- LOGOUT ----------
 @app.route("/logout")
 def logout():
