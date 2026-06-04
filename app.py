@@ -20,7 +20,7 @@ def get_connection():
     return psycopg.connect(DATABASE_URL)
 
 # ---------- DATABASE ----------
-def init_db():
+def init_db():s
     conn = get_connection()
     cur = conn.cursor()
 
