@@ -201,7 +201,10 @@ def admin_dashboard():
 # ---------- OCR MATCH API ----------
 @app.route("/detect")
 def detect():
-    detected_number = detect_number_plate()
+   if detect_number_plate is None:
+    return "OCR module not found.", 500
+
+detected_number = detect_number_plate()
 
     print("Detected:", detected_number)
 
