@@ -9,7 +9,7 @@ from datetime import datetime
 try:
     from detect_ocr import detect_number_plate
 except:
-    detect_number_plate = None  # function should return detected number
+    detect_number_plate = None  # function should return detected number 
 
 app = Flask(__name__)
 app.secret_key = "secret123"
