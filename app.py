@@ -1,71 +1,88 @@
 from flask import Flask, render_template, request, redirect, session, jsonify
 import psycopg
-import random
-import datetime
 import os
+import random
 from datetime import datetime
 
-# 👇 OCR FILE IMPORT (IMPORTANT)
+# ==========================
+# OCR IMPORT
+# ==========================
 try:
     from detect_ocr import detect_number_plate
-except:
-    detect_number_plate = None  # function should return detected number
+except ImportError:
+    detect_number_plate = None
 
+# ==========================
+# FLASK APP
+# ==========================
 app = Flask(__name__)
-app.secret_key = "secret123"
+app.secret_key = "tractor_secret_key"
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# ==========================
+# DATABASE
+# ==========================
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL environment variable is not set.")
+    raise Exception("DATABASE_URL not found.")
 
 def get_connection():
     return psycopg.connect(
         DATABASE_URL,
-        sslmode="require",
-        connect_timeout=10,
+        sslmode="require"
     )
 
-# ---------- DATABASE ----------
+# ==========================
+# CREATE TABLES
+# ==========================
+
 def init_db():
+
     conn = get_connection()
     cur = conn.cursor()
 
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS farmers (
+    CREATE TABLE IF NOT EXISTS farmers(
         id SERIAL PRIMARY KEY,
         name VARCHAR(100),
         phone VARCHAR(20) UNIQUE,
         address VARCHAR(200)
-    )
+    );
     """)
 
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS entries (
-    id SERIAL PRIMARY KEY,
-    farmer_phone VARCHAR(20),
-    farmer_name VARCHAR(100),
-    address VARCHAR(200),
-    tractor VARCHAR(50),
-    trip VARCHAR(50),
-    driver_name VARCHAR(100),
-    driver_phone VARCHAR(20),
-    detected_number VARCHAR(50) DEFAULT 'None',
-    entry_no VARCHAR(50) DEFAULT 'None',
-    token VARCHAR(50) DEFAULT 'None',
-    time VARCHAR(50) DEFAULT 'None'
-)
+    CREATE TABLE IF NOT EXISTS entries(
+        id SERIAL PRIMARY KEY,
+        farmer_phone VARCHAR(20),
+        farmer_name VARCHAR(100),
+        address VARCHAR(200),
+        tractor VARCHAR(50),
+        trip VARCHAR(50),
+        driver_name VARCHAR(100),
+        driver_phone VARCHAR(20),
+        detected_number VARCHAR(50) DEFAULT 'None',
+        entry_no VARCHAR(50) DEFAULT 'None',
+        token VARCHAR(50) DEFAULT 'None',
+        time VARCHAR(50) DEFAULT 'None'
+    );
     """)
 
     conn.commit()
     cur.close()
     conn.close()
 
-init_db()
 
-# ---------- FUNCTIONS ----------
+try:
+    init_db()
+    print("Database Connected")
+except Exception as e:
+    print("Database Error:", e)
+
+# ==========================
+# FUNCTIONS
+# ==========================
+
 def generate_entry():
     return "E" + str(random.randint(1000,9999))
 
@@ -73,81 +90,154 @@ def generate_token():
     return "T" + str(random.randint(100,999))
 
 def current_time():
-    return datetime.now().strftime("%H:%M:%S")
+    return datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
 
-# ---------- HOME ----------
+# ==========================
+# HOME
+# ==========================
+
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# ---------- ADMIN LOGIN ----------
+# ==========================
+# ADMIN LOGIN
+# ==========================
+
 @app.route("/admin_login", methods=["POST"])
 def admin_login():
-    if request.form["username"] == "admin" and request.form["password"] == "admin123":
-        session["admin"] = True
+
+    username = request.form.get("username")
+    password = request.form.get("password")
+
+    if username=="admin" and password=="admin123":
+        session["admin"]=True
         return redirect("/admin_dashboard")
+
     return "Invalid Admin Login"
 
-# ---------- OFFICE LOGIN ----------
+# ==========================
+# OFFICE LOGIN
+# ==========================
+
 @app.route("/office_login", methods=["POST"])
 def office_login():
-    if request.form["username"] == "office" and request.form["password"] == "office123":
-        session["office"] = True
+
+    username=request.form.get("username")
+    password=request.form.get("password")
+
+    if username=="office" and password=="office123":
+        session["office"]=True
         return redirect("/office_dashboard")
+
     return "Invalid Office Login"
 
-# ---------- FARMER LOGIN ----------
+# ==========================
+# FARMER LOGIN
+# ==========================
+
 @app.route("/farmer_login", methods=["POST"])
 def farmer_login():
-    phone = request.form["phone"]
 
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM farmers WHERE phone=%s", (phone,))
-    farmer = cur.fetchone()
+    phone=request.form.get("phone")
+
+    conn=get_connection()
+    cur=conn.cursor()
+
+    cur.execute(
+        "SELECT * FROM farmers WHERE phone=%s",
+        (phone,)
+    )
+
+    farmer=cur.fetchone()
+
+    cur.close()
     conn.close()
 
     if farmer:
-        session["farmer"] = phone
+        session["farmer"]=phone
         return redirect("/farmer_dashboard")
 
-    return "Not Registered"
+    return "Farmer Not Registered"
 
-# ---------- REGISTER ----------
-@app.route("/register", methods=["GET", "POST"])
+# ==========================
+# REGISTER
+# ==========================
+
+@app.route("/register",methods=["GET","POST"])
 def register():
-    if request.method == "POST":
-        name = request.form["name"]
-        phone = request.form["phone"]
-        address = request.form["address"]
 
-        conn = get_connection()
-        cur = conn.cursor()
+    if request.method=="POST":
 
-        cur.execute("INSERT INTO farmers (name, phone, address) VALUES (%s,%s,%s)",
-                    (name, phone, address))
-        conn.commit()
-        conn.close()
+        name=request.form.get("name")
+        phone=request.form.get("phone")
+        address=request.form.get("address")
 
-        return redirect("/")
+        try:
+
+            conn=get_connection()
+            cur=conn.cursor()
+
+            cur.execute(
+                """
+                INSERT INTO farmers(name,phone,address)
+                VALUES(%s,%s,%s)
+                """,
+                (name,phone,address)
+            )
+
+            conn.commit()
+
+            cur.close()
+            conn.close()
+
+            return redirect("/")
+
+        except Exception as e:
+            return str(e)
 
     return render_template("register.html")
 
-# ---------- FETCH FARMER ----------
+# ==========================
+# GET FARMER DETAILS
+# ==========================
+
 @app.route("/get_farmer/<phone>")
 def get_farmer(phone):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT name,address FROM farmers WHERE phone=%s", (phone,))
-    data = cur.fetchone()
+
+    conn=get_connection()
+    cur=conn.cursor()
+
+    cur.execute(
+        """
+        SELECT name,address
+        FROM farmers
+        WHERE phone=%s
+        """,
+        (phone,)
+    )
+
+    farmer=cur.fetchone()
+
+    cur.close()
     conn.close()
 
-    if data:
-        return jsonify({"name": data[0], "address": data[1]})
-    return jsonify({"error": "not found"})
+    if farmer:
 
-# ---------- ADMIN DASHBOARD ----------
-# ---------- ADMIN DASHBOARD ----------
+        return jsonify({
+
+            "name":farmer[0],
+            "address":farmer[1]
+
+        })
+
+    return jsonify({
+        "error":"Farmer Not Found"
+    })
+    # ==========================
+# ADMIN DASHBOARD
+# ==========================
+
 @app.route("/admin_dashboard", methods=["GET", "POST"])
 def admin_dashboard():
 
@@ -159,7 +249,13 @@ def admin_dashboard():
 
     if request.method == "POST":
 
-        current_time = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+        farmer_phone = request.form.get("phone")
+        farmer_name = request.form.get("name")
+        address = request.form.get("address")
+        tractor = request.form.get("tractor")
+        trip = request.form.get("trip")
+        driver_name = request.form.get("driver_name")
+        driver_phone = request.form.get("driver_phone")
 
         cur.execute("""
         INSERT INTO entries
@@ -176,14 +272,14 @@ def admin_dashboard():
         VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
         """,
         (
-            request.form["phone"],
-            request.form["name"],
-            request.form["address"],
-            request.form["tractor"],
-            request.form["trip"],
-            request.form["driver_name"],
-            request.form["driver_phone"],
-            current_time
+            farmer_phone,
+            farmer_name,
+            address,
+            tractor,
+            trip,
+            driver_name,
+            driver_phone,
+            current_time()
         ))
 
         conn.commit()
@@ -191,6 +287,7 @@ def admin_dashboard():
     cur.execute("SELECT * FROM entries ORDER BY id DESC")
     data = cur.fetchall()
 
+    cur.close()
     conn.close()
 
     return render_template(
@@ -198,71 +295,95 @@ def admin_dashboard():
         data=data
     )
 
-# ---------- OCR MATCH API ----------
+
+# ==========================
+# OCR DETECTION
+# ==========================
+
 @app.route("/detect")
 def detect():
-   if detect_number_plate is None:
-    return "OCR module not found.", 500
 
-detected_number = detect_number_plate()
+    if detect_number_plate is None:
+        return "detect_ocr.py not found", 500
 
-    print("Detected:", detected_number)
+    detected_number = detect_number_plate()
+
+    if detected_number is None:
+        return "No Plate Detected"
 
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT * FROM entries WHERE tractor=%s", (detected_number,))
+    cur.execute(
+        "SELECT id FROM entries WHERE tractor=%s ORDER BY id DESC LIMIT 1",
+        (detected_number,)
+    )
+
     row = cur.fetchone()
 
     if row:
+
         entry = generate_entry()
         token = generate_token()
-        time = current_time()
 
         cur.execute("""
-        UPDATE entries SET entry_no=%s, token=%s, time=%s WHERE id=%s
-        """, (entry, token, time, row[0]))
+        UPDATE entries
+        SET
+            detected_number=%s,
+            entry_no=%s,
+            token=%s,
+            time=%s
+        WHERE id=%s
+        """,
+        (
+            detected_number,
+            entry,
+            token,
+            current_time(),
+            row[0]
+        ))
 
         conn.commit()
 
-        print("MATCH FOUND → Entry Generated")
-
+    cur.close()
     conn.close()
 
-    return "Detection Done"
+    return "Detection Completed"
 
-# ---------- OFFICE DASHBOARD ----------
+
+# ==========================
+# OFFICE DASHBOARD
+# ==========================
+
 @app.route("/office_dashboard")
 def office_dashboard():
+
     if "office" not in session:
         return redirect("/")
 
     conn = get_connection()
     cur = conn.cursor()
+
     cur.execute("SELECT * FROM entries ORDER BY id DESC")
+
     data = cur.fetchall()
+
+    cur.close()
     conn.close()
 
-    return render_template("office_dashboard.html", data=data)
+    return render_template(
+        "office_dashboard.html",
+        data=data
+    )
 
-# ---------- add_detected_column ----------
-@app.route("/add_detected_column")
-def add_detected_column():
-    conn = get_connection()
-    cur = conn.cursor()
 
-    cur.execute("""
-        ALTER TABLE entries
-        ADD COLUMN detected_number VARCHAR(50)
-    """)
+# ==========================
+# FARMER DASHBOARD
+# ==========================
 
-    conn.commit()
-    conn.close()
-
-    return "Column Added Successfully"
-# ---------- FARMER DASHBOARD ----------
 @app.route("/farmer_dashboard")
 def farmer_dashboard():
+
     if "farmer" not in session:
         return redirect("/")
 
@@ -270,28 +391,35 @@ def farmer_dashboard():
 
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM entries WHERE farmer_phone=%s", (phone,))
+
+    cur.execute(
+        "SELECT * FROM entries WHERE farmer_phone=%s ORDER BY id DESC",
+        (phone,)
+    )
+
     data = cur.fetchall()
+
+    cur.close()
     conn.close()
 
-    return render_template("farmer_dashboard.html", data=data)
+    return render_template(
+        "farmer_dashboard.html",
+        data=data
+    )
 
-@app.route("/db_test")
-def db_test():
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT 1")
-        cur.fetchone()
-        conn.close()
-        return "Database Connected Successfully ✅"
-    except Exception as e:
-        return str(e)
+
+# ==========================
+# UPDATE DETECTED PLATE
+# ==========================
 
 @app.route("/update_plate", methods=["POST"])
 def update_plate():
 
     data = request.get_json()
+
+    if not data:
+        return jsonify({"status": "error"})
+
     plate = data.get("plate")
 
     conn = get_connection()
@@ -300,7 +428,8 @@ def update_plate():
     cur.execute("""
     UPDATE entries
     SET detected_number=%s
-    WHERE id = (
+    WHERE id=
+    (
         SELECT id
         FROM entries
         ORDER BY id DESC
@@ -309,6 +438,8 @@ def update_plate():
     """, (plate,))
 
     conn.commit()
+
+    cur.close()
     conn.close()
 
     return jsonify({
@@ -316,11 +447,55 @@ def update_plate():
         "plate": plate
     })
 
-# ---------- LOGOUT ----------
+
+# ==========================
+# DATABASE TEST
+# ==========================
+
+@app.route("/db_test")
+def db_test():
+
+    try:
+
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("SELECT NOW()")
+
+        time = cur.fetchone()
+
+        cur.close()
+        conn.close()
+
+        return f"Database Connected Successfully<br>{time}"
+
+    except Exception as e:
+
+        return str(e)
+
+
+# ==========================
+# LOGOUT
+# ==========================
+
 @app.route("/logout")
 def logout():
+
     session.clear()
+
     return redirect("/")
 
+
+# ==========================
+# MAIN
+# ==========================
+
 if __name__ == "__main__":
-    app.run(debug=True)
+
+    port = int(os.environ.get("PORT", 5000))
+
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=True
+    )
