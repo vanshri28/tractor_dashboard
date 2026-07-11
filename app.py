@@ -16,8 +16,17 @@ app.secret_key = "secret123"
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL environment variable is not set.")
+
 def get_connection():
-    return psycopg.connect(DATABASE_URL)
+    return psycopg.connect(
+        DATABASE_URL,
+        sslmode="require",
+        connect_timeout=10,
+    )
 
 # ---------- DATABASE ----------
 def init_db():
