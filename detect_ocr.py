@@ -1,58 +1,100 @@
+import re
 import cv2
 import easyocr
-import numpy as np
+import requests
 
-# OCR reader
-reader = easyocr.Reader(['en'], gpu=False)
+print("Loading OCR...")
+reader = easyocr.Reader(['en'])
 
-def detect_number_plate():
+cap = cv2.VideoCapture(0)
 
-    # 👉 IMAGE LOAD
-    img = cv2.imread("test1.jpg")
+print("Press S to Scan")
+print("Press Q to Quit")
 
-    if img is None:
-        print("Image not found")
-        return None
+while True:
 
-    # 👉 PREPROCESSING
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    blur = cv2.bilateralFilter(gray, 11, 17, 17)
-    edged = cv2.Canny(blur, 30, 200)
+    ret, frame = cap.read()
 
-    # 👉 FIND CONTOURS
-    contours, _ = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    if not ret:
+        print("Camera not detected")
+        break
 
-    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:10]
+    cv2.imshow("Registration Plate Scanner", frame)
 
-    plate_img = None
+    key = cv2.waitKey(1) & 0xFF
 
-    for cnt in contours:
-        approx = cv2.approxPolyDP(cnt, 0.018 * cv2.arcLength(cnt, True), True)
+    if key == ord('s'):
 
-        if len(approx) == 4:  # rectangle (plate shape)
-            x, y, w, h = cv2.boundingRect(cnt)
-            plate_img = gray[y:y+h, x:x+w]
-            break
+        print("\nScanning...")
 
-    # 👉 अगर contour detect नाही झाला तर full image OCR
-    if plate_img is None:
-        plate_img = gray
+        scan_frame = frame.copy()
 
-    # 👉 OCR
-    result = reader.readtext(plate_img)
+        results = reader.readtext(scan_frame)
 
-    text = ""
+        plate_found = False
+        plate_number = ""
 
-    for detection in result:
-        text += detection[1] + " "
+        for result in results:
 
-    text = text.strip().replace(" ", "").upper()
+            box = result[0]
+            text = result[1]
 
-    print("Detected Number Plate:", text)
+            # Clean OCR text
+            clean_text = text.upper()
+            clean_text = clean_text.replace(".", "")
+            clean_text = clean_text.replace("-", "")
+            clean_text = clean_text.replace(" ", "")
+            print("OCR Read:", clean_text)
 
-    return text
+            # Indian Vehicle Registration Pattern
+            pattern = r'^[A-Z]{2}[0-9]{2}[A-Z]{1,3}[0-9]{4}$'
 
+            if re.match(pattern, clean_text):
 
-# 👉 TEST RUN (direct run साठी)
-if __name__ == "__main__":
-    detect_number_plate()
+                plate_found = True
+                plate_number = clean_text
+
+                top_left = tuple(map(int, box[0]))
+                bottom_right = tuple(map(int, box[2]))
+
+                cv2.rectangle(
+                    scan_frame,
+                    top_left,
+                    bottom_right,
+                    (0, 255, 0),
+                    3
+                )
+
+                cv2.putText(
+                    scan_frame,
+                    plate_number,
+                    (top_left[0], top_left[1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    (0, 255, 0),
+                    2
+                )
+
+        if plate_found:
+
+            print("\nDetected Registration Number:")
+            print(plate_number)
+
+            requests.post(
+                "https://tractor-dashboard-z05m.onrender.com/update_plate",
+                json={"plate": plate_number}
+            )
+
+        else:
+
+            print("\nNo registration plate found")
+
+        cv2.imshow("Detected Registration Plate", scan_frame)
+
+        cv2.waitKey(0)
+
+    if key == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
