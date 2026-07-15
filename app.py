@@ -282,25 +282,48 @@ def update_plate():
     data = request.get_json()
     plate = data.get("plate")
 
+    # Clean OCR plate
+    plate = plate.replace(" ", "").replace("-", "").upper()
+
     conn = get_connection()
     cur = conn.cursor()
 
+    # Get latest tractor entry
     cur.execute("""
-    UPDATE entries
-    SET detected_number=%s
-    WHERE id = (
-        SELECT id
+        SELECT id, tractor
         FROM entries
         ORDER BY id DESC
         LIMIT 1
-    )
-    """, (plate,))
+    """)
 
-    conn.commit()
+    row = cur.fetchone()
+
+    if row:
+
+        entry_id = row[0]
+        tractor_number = row[1].replace(" ", "").replace("-", "").upper()
+
+        if tractor_number == plate:
+
+            cur.execute("""
+                UPDATE entries
+                SET detected_number=%s
+                WHERE id=%s
+            """, (plate, entry_id))
+
+            conn.commit()
+
+            conn.close()
+
+            return jsonify({
+                "status": "matched",
+                "plate": plate
+            })
+
     conn.close()
 
     return jsonify({
-        "status": "success",
+        "status": "not matched",
         "plate": plate
     })
 
