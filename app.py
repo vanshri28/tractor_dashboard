@@ -280,7 +280,7 @@ def db_test():
 def update_plate():
 
     data = request.get_json()
-    plate = data.get("plate")
+    plate = data.get("plate", "")
 
     # Clean OCR plate
     plate = plate.replace(" ", "").replace("-", "").upper()
@@ -298,35 +298,48 @@ def update_plate():
 
     row = cur.fetchone()
 
-    if row:
+    if not row:
+        cur.close()
+        conn.close()
 
-        entry_id = row[0]
-        tractor_number = row[1].replace(" ", "").replace("-", "").upper()
+        return jsonify({
+            "status": "no entry",
+            "plate": plate
+        })
 
-        if tractor_number == plate:
+    entry_id = row[0]
+    tractor_number = row[1] or ""
 
-            cur.execute("""
-                UPDATE entries
-                SET detected_number=%s
-                WHERE id=%s
-            """, (plate, entry_id))
+    # Clean manual tractor number
+    tractor_number = tractor_number.replace(" ", "").replace("-", "").upper()
 
-            conn.commit()
+    # Save detected OCR number
+    cur.execute("""
+        UPDATE entries
+        SET detected_number=%s
+        WHERE id=%s
+    """, (plate, entry_id))
 
-            conn.close()
+    conn.commit()
 
-            return jsonify({
-                "status": "matched",
-                "plate": plate
-            })
+    # Check matching
+    if tractor_number == plate:
 
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            "status": "matched",
+            "plate": plate
+        })
+
+    cur.close()
     conn.close()
 
     return jsonify({
         "status": "not matched",
         "plate": plate
     })
-
 # ---------- LOGOUT ----------
 @app.route("/logout")
 def logout():
