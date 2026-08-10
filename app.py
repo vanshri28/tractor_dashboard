@@ -64,7 +64,8 @@ def init_db():
             entry_no VARCHAR(50) DEFAULT 'None',
             token VARCHAR(50) DEFAULT 'None',
             time VARCHAR(50) DEFAULT 'None',
-            result_image_url TEXT
+            result_image_url VARCHAR(500)
+            DEFAULT 'None'
         )
     """)
 
@@ -99,6 +100,10 @@ def init_db():
     cur.execute("""
         ALTER TABLE entries
         ADD COLUMN IF NOT EXISTS result_image_url TEXT
+    """)
+    cur.execute("""
+        ALTER TABLE entries
+        ADD COLUMN IF NOT EXISTS result_image_url VARCHAR(500) DEFAULT 'None'
     """)
 
     conn.commit()
@@ -604,23 +609,15 @@ def update_plate():
         data = request.get_json(silent=True)
 
         if not data:
-
             return jsonify({
                 "status": "error",
                 "message": "No JSON data received"
             }), 400
 
-        plate = data.get("plate", "")
+        plate = clean_plate(data.get("plate", ""))
         image_url = data.get("image_url", "")
 
-        # -------------------------------------------------
-        # CLEAN PLATE
-        # -------------------------------------------------
-
-        plate = clean_plate(plate)
-
         if not plate:
-
             return jsonify({
                 "status": "error",
                 "message": "Empty plate number"
@@ -629,10 +626,9 @@ def update_plate():
         conn = get_connection()
         cur = conn.cursor()
 
-        # =================================================
-        # IMPORTANT:
-        # ONLY NEW/PENDING ENTRY
-        # =================================================
+        # ---------------------------------------------
+        # TAKE LATEST MANUAL ENTRY
+        # ---------------------------------------------
 
         cur.execute("""
             SELECT
@@ -641,53 +637,40 @@ def update_plate():
                 entry_no,
                 token
             FROM entries
-            WHERE
-                (entry_no IS NULL OR entry_no = 'None')
-                AND
-                (token IS NULL OR token = 'None')
             ORDER BY id DESC
             LIMIT 1
         """)
 
         row = cur.fetchone()
 
-        # -------------------------------------------------
-        # NO ACTIVE ENTRY
-        # -------------------------------------------------
-
         if not row:
 
             cur.close()
             conn.close()
 
-            print("========================================")
-            print("NO ACTIVE ENTRY")
-            print("OCR PLATE :", plate)
-            print("OLD ENTRIES NOT CHANGED")
-            print("========================================")
-
             return jsonify({
-                "status": "no active entry",
+                "status": "no entry",
                 "plate": plate,
-                "message": "Create a new tractor entry first."
+                "image_url": image_url
             })
 
         entry_id = row[0]
+
         tractor_number = clean_plate(row[1])
 
         existing_entry = row[2]
         existing_token = row[3]
 
         print("========================================")
-        print("ACTIVE ENTRY :", entry_id)
-        print("TRACTOR      :", tractor_number)
-        print("OCR PLATE    :", plate)
-        print("IMAGE URL    :", image_url)
+        print("LATEST ENTRY ID :", entry_id)
+        print("MANUAL TRACTOR  :", tractor_number)
+        print("OCR PLATE       :", plate)
+        print("IMAGE URL       :", image_url)
         print("========================================")
 
-        # -------------------------------------------------
-        # SAVE DETECTED NUMBER + IMAGE
-        # -------------------------------------------------
+        # ---------------------------------------------
+        # SAVE OCR + IMAGE
+        # ---------------------------------------------
 
         cur.execute("""
             UPDATE entries
@@ -697,13 +680,13 @@ def update_plate():
             WHERE id=%s
         """, (
             plate,
-            image_url if image_url else None,
+            image_url if image_url else "None",
             entry_id
         ))
 
-        # =================================================
-        # MATCH
-        # =================================================
+        # ---------------------------------------------
+        # CHECK MATCH
+        # ---------------------------------------------
 
         if tractor_number == plate:
 
@@ -741,7 +724,7 @@ def update_plate():
                 entry_no,
                 token,
                 entry_time,
-                image_url if image_url else None,
+                image_url if image_url else "None",
                 entry_id
             ))
 
@@ -768,9 +751,9 @@ def update_plate():
                 "image_url": image_url
             })
 
-        # =================================================
+        # ---------------------------------------------
         # NOT MATCHED
-        # =================================================
+        # ---------------------------------------------
 
         conn.commit()
 
@@ -781,8 +764,7 @@ def update_plate():
         print("NOT MATCHED")
         print("TRACTOR :", tractor_number)
         print("PLATE   :", plate)
-        print("ENTRY   : None")
-        print("TOKEN   : None")
+        print("IMAGE   :", image_url)
         print("========================================")
 
         return jsonify({
@@ -802,8 +784,6 @@ def update_plate():
             "status": "error",
             "message": str(e)
         }), 500
-
-
 # =========================================================
 # LOGOUT
 # =========================================================
