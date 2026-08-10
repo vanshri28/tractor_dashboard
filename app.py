@@ -63,31 +63,42 @@ def init_db():
             detected_number VARCHAR(50) DEFAULT 'None',
             entry_no VARCHAR(50) DEFAULT 'None',
             token VARCHAR(50) DEFAULT 'None',
-            time VARCHAR(50) DEFAULT 'None'
+            time VARCHAR(50) DEFAULT 'None',
+            result_image_url TEXT
         )
     """)
 
     # -------------------------------------------------
-    # Make sure columns exist in old database also
+    # OLD DATABASE SUPPORT
     # -------------------------------------------------
+
     cur.execute("""
         ALTER TABLE entries
-        ADD COLUMN IF NOT EXISTS detected_number VARCHAR(50) DEFAULT 'None'
+        ADD COLUMN IF NOT EXISTS detected_number VARCHAR(50)
+        DEFAULT 'None'
     """)
 
     cur.execute("""
         ALTER TABLE entries
-        ADD COLUMN IF NOT EXISTS entry_no VARCHAR(50) DEFAULT 'None'
+        ADD COLUMN IF NOT EXISTS entry_no VARCHAR(50)
+        DEFAULT 'None'
     """)
 
     cur.execute("""
         ALTER TABLE entries
-        ADD COLUMN IF NOT EXISTS token VARCHAR(50) DEFAULT 'None'
+        ADD COLUMN IF NOT EXISTS token VARCHAR(50)
+        DEFAULT 'None'
     """)
 
     cur.execute("""
         ALTER TABLE entries
-        ADD COLUMN IF NOT EXISTS time VARCHAR(50) DEFAULT 'None'
+        ADD COLUMN IF NOT EXISTS time VARCHAR(50)
+        DEFAULT 'None'
+    """)
+
+    cur.execute("""
+        ALTER TABLE entries
+        ADD COLUMN IF NOT EXISTS result_image_url TEXT
     """)
 
     conn.commit()
@@ -105,13 +116,6 @@ init_db()
 # =========================================================
 
 def clean_plate(number):
-    """
-    Remove spaces, hyphens and convert to uppercase.
-    Example:
-    KA 23 TC 5319
-    becomes
-    KA23TC5319
-    """
 
     if number is None:
         return ""
@@ -312,6 +316,7 @@ def admin_dashboard():
     # -----------------------------------------------------
     # ADD NEW TRACTOR ENTRY
     # -----------------------------------------------------
+
     if request.method == "POST":
 
         entry_time = datetime.now().strftime(
@@ -331,10 +336,11 @@ def admin_dashboard():
                 detected_number,
                 entry_no,
                 token,
-                time
+                time,
+                result_image_url
             )
             VALUES
-            (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """, (
 
             request.form.get("phone", ""),
@@ -348,7 +354,8 @@ def admin_dashboard():
             "None",
             "None",
             "None",
-            entry_time
+            entry_time,
+            None
         ))
 
         conn.commit()
@@ -392,8 +399,6 @@ def detect():
 
     detected_number = clean_plate(detected_number)
 
-    print("Detected:", detected_number)
-
     if not detected_number:
 
         return jsonify({
@@ -405,12 +410,16 @@ def detect():
     cur = conn.cursor()
 
     # -----------------------------------------------------
-    # FIND LATEST MANUAL ENTRY
+    # ONLY PENDING ENTRY
     # -----------------------------------------------------
 
     cur.execute("""
-        SELECT id, tractor
+        SELECT id, tractor, entry_no, token
         FROM entries
+        WHERE
+            (entry_no IS NULL OR entry_no = 'None')
+            AND
+            (token IS NULL OR token = 'None')
         ORDER BY id DESC
         LIMIT 1
     """)
@@ -423,17 +432,14 @@ def detect():
         conn.close()
 
         return jsonify({
-            "status": "no entry"
+            "status": "no active entry",
+            "message": "Please create a new tractor entry first."
         })
 
     entry_id = row[0]
-
     tractor_number = clean_plate(row[1])
 
-    # -----------------------------------------------------
-    # SAVE DETECTED NUMBER IN LATEST ENTRY
-    # -----------------------------------------------------
-
+    # Save detected number
     cur.execute("""
         UPDATE entries
         SET detected_number=%s
@@ -444,7 +450,7 @@ def detect():
     ))
 
     # -----------------------------------------------------
-    # CHECK MATCH
+    # MATCH
     # -----------------------------------------------------
 
     if tractor_number == detected_number:
@@ -456,11 +462,13 @@ def detect():
         cur.execute("""
             UPDATE entries
             SET
+                detected_number=%s,
                 entry_no=%s,
                 token=%s,
                 time=%s
             WHERE id=%s
         """, (
+            detected_number,
             entry_no,
             token,
             entry_time,
@@ -471,14 +479,6 @@ def detect():
 
         cur.close()
         conn.close()
-
-        print("========================================")
-        print("MATCH FOUND")
-        print("TRACTOR :", tractor_number)
-        print("DETECTED:", detected_number)
-        print("ENTRY   :", entry_no)
-        print("TOKEN   :", token)
-        print("========================================")
 
         return jsonify({
             "status": "matched",
@@ -496,12 +496,6 @@ def detect():
 
     cur.close()
     conn.close()
-
-    print("========================================")
-    print("NOT MATCHED")
-    print("TRACTOR :", tractor_number)
-    print("DETECTED:", detected_number)
-    print("========================================")
 
     return jsonify({
         "status": "not matched",
@@ -586,7 +580,6 @@ def db_test():
         cur = conn.cursor()
 
         cur.execute("SELECT 1")
-
         cur.fetchone()
 
         cur.close()
@@ -600,7 +593,7 @@ def db_test():
 
 
 # =========================================================
-# UPDATE DETECTED NUMBER PLATE
+# UPDATE DETECTED NUMBER + CLOUDINARY IMAGE
 # =========================================================
 
 @app.route("/update_plate", methods=["POST"])
@@ -618,9 +611,10 @@ def update_plate():
             }), 400
 
         plate = data.get("plate", "")
+        image_url = data.get("image_url", "")
 
         # -------------------------------------------------
-        # CLEAN OCR NUMBER
+        # CLEAN PLATE
         # -------------------------------------------------
 
         plate = clean_plate(plate)
@@ -635,10 +629,10 @@ def update_plate():
         conn = get_connection()
         cur = conn.cursor()
 
-        # -------------------------------------------------
+        # =================================================
         # IMPORTANT:
-        # ALWAYS TAKE LATEST MANUAL TRACTOR ENTRY
-        # -------------------------------------------------
+        # ONLY NEW/PENDING ENTRY
+        # =================================================
 
         cur.execute("""
             SELECT
@@ -647,58 +641,71 @@ def update_plate():
                 entry_no,
                 token
             FROM entries
+            WHERE
+                (entry_no IS NULL OR entry_no = 'None')
+                AND
+                (token IS NULL OR token = 'None')
             ORDER BY id DESC
             LIMIT 1
         """)
 
         row = cur.fetchone()
 
+        # -------------------------------------------------
+        # NO ACTIVE ENTRY
+        # -------------------------------------------------
+
         if not row:
 
             cur.close()
             conn.close()
 
+            print("========================================")
+            print("NO ACTIVE ENTRY")
+            print("OCR PLATE :", plate)
+            print("OLD ENTRIES NOT CHANGED")
+            print("========================================")
+
             return jsonify({
-                "status": "no entry",
-                "plate": plate
+                "status": "no active entry",
+                "plate": plate,
+                "message": "Create a new tractor entry first."
             })
 
         entry_id = row[0]
-
         tractor_number = clean_plate(row[1])
 
         existing_entry = row[2]
         existing_token = row[3]
 
         print("========================================")
-        print("LATEST ENTRY ID :", entry_id)
-        print("MANUAL TRACTOR  :", tractor_number)
-        print("OCR PLATE       :", plate)
+        print("ACTIVE ENTRY :", entry_id)
+        print("TRACTOR      :", tractor_number)
+        print("OCR PLATE    :", plate)
+        print("IMAGE URL    :", image_url)
         print("========================================")
 
         # -------------------------------------------------
-        # SAVE DETECTED PLATE ONLY IN LATEST ENTRY
+        # SAVE DETECTED NUMBER + IMAGE
         # -------------------------------------------------
 
         cur.execute("""
             UPDATE entries
-            SET detected_number=%s
+            SET
+                detected_number=%s,
+                result_image_url=%s
             WHERE id=%s
         """, (
             plate,
+            image_url if image_url else None,
             entry_id
         ))
 
-        # -------------------------------------------------
-        # COMPARE MANUAL NUMBER AND OCR NUMBER
-        # -------------------------------------------------
+        # =================================================
+        # MATCH
+        # =================================================
 
         if tractor_number == plate:
-
-            # ---------------------------------------------
-            # GENERATE ENTRY + TOKEN ONLY IF NOT ALREADY
-            # GENERATED
-            # ---------------------------------------------
 
             if (
                 existing_entry is None
@@ -720,23 +727,21 @@ def update_plate():
 
             entry_time = current_time()
 
-            # ---------------------------------------------
-            # UPDATE SAME LATEST ENTRY
-            # ---------------------------------------------
-
             cur.execute("""
                 UPDATE entries
                 SET
                     detected_number=%s,
                     entry_no=%s,
                     token=%s,
-                    time=%s
+                    time=%s,
+                    result_image_url=%s
                 WHERE id=%s
             """, (
                 plate,
                 entry_no,
                 token,
                 entry_time,
+                image_url if image_url else None,
                 entry_id
             ))
 
@@ -751,6 +756,7 @@ def update_plate():
             print("PLATE   :", plate)
             print("ENTRY   :", entry_no)
             print("TOKEN   :", token)
+            print("IMAGE   :", image_url)
             print("========================================")
 
             return jsonify({
@@ -758,12 +764,13 @@ def update_plate():
                 "plate": plate,
                 "tractor": tractor_number,
                 "entry": entry_no,
-                "token": token
+                "token": token,
+                "image_url": image_url
             })
 
-        # -------------------------------------------------
+        # =================================================
         # NOT MATCHED
-        # -------------------------------------------------
+        # =================================================
 
         conn.commit()
 
@@ -774,12 +781,17 @@ def update_plate():
         print("NOT MATCHED")
         print("TRACTOR :", tractor_number)
         print("PLATE   :", plate)
+        print("ENTRY   : None")
+        print("TOKEN   : None")
         print("========================================")
 
         return jsonify({
             "status": "not matched",
             "plate": plate,
-            "tractor": tractor_number
+            "tractor": tractor_number,
+            "entry": "None",
+            "token": "None",
+            "image_url": image_url
         })
 
     except Exception as e:
