@@ -51,10 +51,36 @@ border:none;
 cursor:pointer;
 border-radius:5px;
 }
+
+.result-image{
+width:100px;
+height:70px;
+object-fit:cover;
+border-radius:5px;
+border:1px solid #ccc;
+}
+
+.view-button{
+background:#2980b9;
+margin-top:5px;
+}
 </style>
 
 <script>
 function printSlip(data){
+
+    let imageSection = "";
+
+    if(data.image_url && data.image_url !== "None"){
+        imageSection = `
+        <br>
+        Result Image:<br>
+        <img src="${data.image_url}"
+             style="width:250px; margin-top:10px;">
+        <br>
+        `;
+    }
+
     let slip = `
     <html>
     <body style="font-family:monospace; padding:20px;">
@@ -71,11 +97,14 @@ function printSlip(data){
     Entry: ${data.entry}<br>
     Token: ${data.token}<br>
     Time: ${data.time}<br>
+    ${imageSection}
     <hr>
     </body>
     </html>
     `;
-    let win = window.open('', '', 'width=300,height=400');
+
+    let win = window.open('', '', 'width=400,height=600');
+
     win.document.write(slip);
     win.document.close();
     win.print();
@@ -97,6 +126,7 @@ function printSlip(data){
 <h2>Office Dashboard</h2>
 
 <table>
+
 <tr>
 <th>ID</th>
 <th>Name</th>
@@ -110,49 +140,129 @@ function printSlip(data){
 <th>Entry</th>
 <th>Token</th>
 <th>Time</th>
+<th>Result Image</th>
 <th>Print</th>
 </tr>
 
+
 {% for row in data %}
+
 <tr>
+
 <td>{{row[0]}}</td>
+
 <td>{{row[2]}}</td>
+
 <td>{{row[1]}}</td>
+
 <td>{{row[3]}}</td>
+
 <td>{{row[4]}}</td>
+
 <td>{{row[5]}}</td>
+
 <td>{{row[6]}}</td>
+
 <td>{{row[7]}}</td>
 
+
 <!-- Detected Number Plate -->
-<td>{{row[8]}}</td>
-
-<!-- Entry -->
-<td>{{row[9]}}</td>
-
-<!-- Token -->
-<td>{{row[10]}}</td>
-
-<!-- Time -->
-<td>{{row[11]}}</td>
 
 <td>
+{{row[8]}}
+</td>
+
+
+<!-- Entry -->
+
+<td>
+{{row[9]}}
+</td>
+
+
+<!-- Token -->
+
+<td>
+{{row[10]}}
+</td>
+
+
+<!-- Time -->
+
+<td>
+{{row[11]}}
+</td>
+
+
+<!-- Result Image -->
+
+<td>
+
+{% if row[12] and row[12] != "None" %}
+
+<img
+    src="{{row[12]}}"
+    class="result-image"
+    alt="Result Image"
+>
+
+<br>
+
+<button
+    class="view-button"
+    onclick="window.open('{{row[12]}}','_blank')">
+    View
+</button>
+
+{% else %}
+
+None
+
+{% endif %}
+
+</td>
+
+
+<!-- Print -->
+
+<td>
+
 <button onclick='printSlip({
+
 name:"{{row[2]}}",
+
 phone:"{{row[1]}}",
+
 address:"{{row[3]}}",
+
 tractor:"{{row[4]}}",
+
 trip:"{{row[5]}}",
+
 driver:"{{row[6]}}",
+
 driver_phone:"{{row[7]}}",
+
 detected_number:"{{row[8]}}",
+
 entry:"{{row[9]}}",
+
 token:"{{row[10]}}",
-time:"{{row[11]}}"
-})'>Print</button>
+
+time:"{{row[11]}}",
+
+image_url:"{{row[12]}}"
+
+})'>
+
+Print
+
+</button>
+
 </td>
 
 </tr>
+
 {% endfor %}
 
 </table>
