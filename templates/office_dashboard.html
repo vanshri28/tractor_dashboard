@@ -52,20 +52,33 @@ body{
     gap:10px;
 }
 
+.panel-title{
+    font-size:18px;
+    font-weight:bold;
+}
+
 h2{
     text-align:center;
+
     margin:10px 0 5px 0;
 }
 
 .subtitle{
     text-align:center;
+
     font-size:14px;
+
     margin-bottom:20px;
+
+    color:#f1f1f1;
 }
 
 .table-container{
     width:100%;
+
     overflow-x:auto;
+
+    margin-top:10px;
 }
 
 table{
@@ -78,8 +91,6 @@ table{
     color:black;
 
     border-collapse:collapse;
-
-    margin-top:10px;
 }
 
 th,
@@ -149,6 +160,7 @@ button:hover{
 
 .result-image{
     width:120px;
+
     height:80px;
 
     object-fit:cover;
@@ -184,20 +196,36 @@ button:hover{
     font-weight:bold;
 }
 
+.detected{
+    font-weight:bold;
+
+    color:#1b5e20;
+}
+
 .empty-message{
-    text-align:center;
-
-    padding:40px;
-
-    font-size:18px;
-
     background:white;
 
     color:#555;
 
-    border-radius:8px;
+    text-align:center;
+
+    padding:40px;
+
+    border-radius:10px;
+
+    font-size:18px;
 
     margin-top:20px;
+}
+
+.status{
+    text-align:center;
+
+    font-size:13px;
+
+    color:#e8f8f5;
+
+    margin-bottom:10px;
 }
 
 </style>
@@ -219,6 +247,27 @@ function valueOrDash(value){
     }
 
     return value;
+}
+
+
+function viewImage(url){
+
+    if(
+        !url ||
+        url === "None"
+    ){
+
+        alert(
+            "Result image is not available."
+        );
+
+        return;
+    }
+
+    window.open(
+        url,
+        "_blank"
+    );
 }
 
 
@@ -262,19 +311,18 @@ function printSlip(data){
             "
         >
 
-        <b>Result Image</b>
+            <b>Result Image</b>
 
-        <br>
+            <br><br>
 
-        <br>
-
-        <img
-            src="${data.image_url}"
-            style="
-            width:280px;
-            max-width:100%;
-            "
-        >
+            <img
+                src="${data.image_url}"
+                style="
+                width:280px;
+                max-width:100%;
+                border:1px solid #000;
+                "
+            >
 
         </div>
 
@@ -290,221 +338,228 @@ function printSlip(data){
 
     <head>
 
-    <title>
-        Tractor Entry Slip
-    </title>
+        <title>
+            Tractor Entry Slip
+        </title>
 
-    <style>
+        <style>
 
-    body{
+        body{
 
-        font-family:Arial,sans-serif;
+            font-family:Arial,sans-serif;
 
-        padding:20px;
+            padding:20px;
 
-        color:#000;
+            color:#000;
 
-    }
+        }
 
-    h2{
+        h2{
 
-        text-align:center;
+            text-align:center;
 
-        margin-bottom:5px;
+            margin-bottom:5px;
 
-    }
+        }
 
-    .subtitle{
+        .subtitle{
 
-        text-align:center;
+            text-align:center;
 
-        font-size:13px;
+            font-size:13px;
 
-        margin-bottom:15px;
+            margin-bottom:15px;
 
-    }
+        }
 
-    table{
+        table{
 
-        width:100%;
+            width:100%;
 
-        border-collapse:collapse;
+            border-collapse:collapse;
 
-    }
+            margin-top:10px;
 
-    td{
+        }
 
-        border:1px solid #000;
+        td{
 
-        padding:7px;
+            border:1px solid #000;
 
-    }
+            padding:8px;
 
-    .label{
+        }
 
-        font-weight:bold;
+        .label{
 
-        width:40%;
+            font-weight:bold;
 
-    }
+            width:40%;
 
-    .footer{
+        }
 
-        margin-top:20px;
+        .footer{
 
-        text-align:center;
+            margin-top:20px;
 
-        font-size:12px;
+            text-align:center;
 
-    }
+            font-size:12px;
 
-    </style>
+        }
+
+        </style>
 
     </head>
 
     <body>
 
-    <h2>
-        Sugar Factory
-    </h2>
+        <h2>
+            Sugar Factory
+        </h2>
 
-    <div class="subtitle">
-        Tractor Entry Slip
-    </div>
+        <div class="subtitle">
+            Tractor Entry Slip
+        </div>
 
-    <hr>
+        <hr>
 
-    <table>
+        <table>
 
-    <tr>
-        <td class="label">
-            Name
-        </td>
+            <tr>
+                <td class="label">
+                    Name
+                </td>
 
-        <td>
-            ${valueOrDash(data.name)}
-        </td>
-    </tr>
-
-
-    <tr>
-        <td class="label">
-            Phone
-        </td>
-
-        <td>
-            ${valueOrDash(data.phone)}
-        </td>
-    </tr>
+                <td>
+                    ${valueOrDash(data.name)}
+                </td>
+            </tr>
 
 
-    <tr>
-        <td class="label">
-            Address
-        </td>
+            <tr>
+                <td class="label">
+                    Phone
+                </td>
 
-        <td>
-            ${valueOrDash(data.address)}
-        </td>
-    </tr>
-
-
-    <tr>
-        <td class="label">
-            Tractor
-        </td>
-
-        <td>
-            ${valueOrDash(data.tractor)}
-        </td>
-    </tr>
+                <td>
+                    ${valueOrDash(data.phone)}
+                </td>
+            </tr>
 
 
-    <tr>
-        <td class="label">
-            Trip
-        </td>
+            <tr>
+                <td class="label">
+                    Address
+                </td>
 
-        <td>
-            ${valueOrDash(data.trip)}
-        </td>
-    </tr>
-
-
-    <tr>
-        <td class="label">
-            Driver
-        </td>
-
-        <td>
-            ${valueOrDash(data.driver)}
-        </td>
-    </tr>
+                <td>
+                    ${valueOrDash(data.address)}
+                </td>
+            </tr>
 
 
-    <tr>
-        <td class="label">
-            Driver Phone
-        </td>
+            <tr>
+                <td class="label">
+                    Tractor Number
+                </td>
 
-        <td>
-            ${valueOrDash(data.driver_phone)}
-        </td>
-    </tr>
-
-
-    <tr>
-        <td class="label">
-            Detected Number
-        </td>
-
-        <td>
-            ${valueOrDash(data.detected_number)}
-        </td>
-    </tr>
+                <td>
+                    ${valueOrDash(data.tractor)}
+                </td>
+            </tr>
 
 
-    <tr>
-        <td class="label">
-            Entry Number
-        </td>
+            <tr>
+                <td class="label">
+                    Trip
+                </td>
 
-        <td>
-            ${valueOrDash(data.entry)}
-        </td>
-    </tr>
-
-
-    <tr>
-        <td class="label">
-            Token Number
-        </td>
-
-        <td>
-            ${valueOrDash(data.token)}
-        </td>
-    </tr>
+                <td>
+                    ${valueOrDash(data.trip)}
+                </td>
+            </tr>
 
 
-    <tr>
-        <td class="label">
-            Time
-        </td>
+            <tr>
+                <td class="label">
+                    Driver
+                </td>
 
-        <td>
-            ${valueOrDash(data.time)}
-        </td>
-    </tr>
+                <td>
+                    ${valueOrDash(data.driver)}
+                </td>
+            </tr>
 
-    </table>
 
-    ${imageSection}
+            <tr>
+                <td class="label">
+                    Driver Phone
+                </td>
 
-    <hr>
+                <td>
+                    ${valueOrDash(data.driver_phone)}
+                </td>
+            </tr>
 
-    <div class="footer">
-        Tractor Entry Management System
-    </div>
+
+            <tr>
+                <td class="label">
+                    Detected Number
+                </td>
+
+                <td>
+                    ${valueOrDash(data.detected_number)}
+                </td>
+            </tr>
+
+
+            <tr>
+                <td class="label">
+                    Entry Number
+                </td>
+
+                <td>
+                    ${valueOrDash(data.entry)}
+                </td>
+            </tr>
+
+
+            <tr>
+                <td class="label">
+                    Token Number
+                </td>
+
+                <td>
+                    ${valueOrDash(data.token)}
+                </td>
+            </tr>
+
+
+            <tr>
+                <td class="label">
+                    Time
+                </td>
+
+                <td>
+                    ${valueOrDash(data.time)}
+                </td>
+            </tr>
+
+        </table>
+
+
+        ${imageSection}
+
+
+        <hr>
+
+
+        <div class="footer">
+
+            Tractor Entry Management System
+
+        </div>
 
     </body>
 
@@ -523,7 +578,7 @@ function printSlip(data){
     if(!win){
 
         alert(
-            "Please allow pop-ups."
+            "Please allow pop-ups for printing."
         );
 
         return;
@@ -552,6 +607,16 @@ function printSlip(data){
 
 }
 
+
+setTimeout(
+    function(){
+
+        location.reload();
+
+    },
+    5000
+);
+
 </script>
 
 </head>
@@ -566,10 +631,8 @@ function printSlip(data){
 <div class="top-bar">
 
 
-<div>
-    <b>
-        Office Panel
-    </b>
+<div class="panel-title">
+    Office Panel
 </div>
 
 
@@ -595,16 +658,19 @@ function printSlip(data){
 
 
 <div class="subtitle">
+    Only confirmed tractor entries are displayed
+</div>
 
-Only confirmed tractor entries are displayed
 
+<div class="status">
+    Waiting for Raspberry Pi detection...
 </div>
 
 
 <div class="table-container">
 
 
-{% if data %}
+{% set ns = namespace(found=false) %}
 
 
 <table>
@@ -644,6 +710,22 @@ Only confirmed tractor entries are displayed
 
 
 {% for row in data %}
+
+
+{% if
+    row[8]
+    and row[8] != "None"
+    and row[8] != ""
+    and row[9]
+    and row[9] != "None"
+    and row[9] != ""
+    and row[10]
+    and row[10] != "None"
+    and row[10] != ""
+%}
+
+
+{% set ns.found = true %}
 
 
 <tr>
@@ -697,9 +779,11 @@ Only confirmed tractor entries are displayed
 
 <td>
 
-<b>
-    {{ row[8] }}
-</b>
+<span class="detected">
+
+{{ row[8] }}
+
+</span>
 
 </td>
 
@@ -727,14 +811,14 @@ Only confirmed tractor entries are displayed
 
 
 <td>
-    {{ row[11] }}
+    {{ row[11] if row[11] else "-" }}
 </td>
 
 
 <td>
 
 
-{% if row[12] and row[12] != "None" %}
+{% if row[12] and row[12] != "None" and row[12] != "" %}
 
 
 <img
@@ -749,11 +833,7 @@ Only confirmed tractor entries are displayed
 
 <button
     class="view-button"
-
-    onclick='window.open(
-        {{ row[12]|tojson }},
-        "_blank"
-    )'
+    onclick='viewImage({{ row[12]|tojson }})'
 >
 
 View
@@ -766,10 +846,7 @@ View
 
 <button
     class="download-button"
-
-    onclick='downloadImage(
-        {{ row[12]|tojson }}
-    )'
+    onclick='downloadImage({{ row[12]|tojson }})'
 >
 
 Download
@@ -781,9 +858,7 @@ Download
 
 
 <span class="no-image">
-
-No Image
-
+    No Image
 </span>
 
 
@@ -839,22 +914,25 @@ Print
 </tr>
 
 
+{% endif %}
+
+
 {% endfor %}
 
 
 </table>
 
 
-{% else %}
+{% if not ns.found %}
 
 
 <div class="empty-message">
 
-No tractor entry detected yet.
+No tractor entry yet.
 
-<br>
+<br><br>
 
-Waiting for camera/OCR entry...
+Waiting for Raspberry Pi number-plate detection...
 
 </div>
 
