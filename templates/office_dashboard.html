@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 
 <title>Office Dashboard</title>
@@ -11,25 +12,33 @@
 body{
     margin:0;
     font-family:Arial,sans-serif;
+
     background:
     linear-gradient(
         rgba(0,0,0,0.65),
         rgba(0,0,0,0.65)
     ),
     url("https://images.unsplash.com/photo-1500382017468-9049fed747ef");
+
     background-size:cover;
     background-position:center;
     background-attachment:fixed;
+
     color:white;
 }
 
 .container{
     width:95%;
     margin:25px auto;
+
     background:rgba(255,255,255,0.15);
+
     padding:20px;
+
     border-radius:15px;
+
     backdrop-filter:blur(10px);
+
     box-sizing:border-box;
 }
 
@@ -37,48 +46,62 @@ body{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    gap:10px;
+
     flex-wrap:wrap;
+
+    gap:10px;
 }
 
 h2{
     text-align:center;
-    margin:10px 0 20px 0;
+    margin:10px 0 5px 0;
 }
 
-.status{
+.subtitle{
     text-align:center;
-    margin-top:10px;
     font-size:14px;
-    color:#dff9fb;
+    margin-bottom:20px;
 }
 
 .table-container{
     width:100%;
     overflow-x:auto;
-    margin-top:20px;
 }
 
 table{
     width:100%;
+
     min-width:1500px;
+
     background:white;
+
     color:black;
+
     border-collapse:collapse;
+
+    margin-top:10px;
 }
 
-th,td{
+th,
+td{
     padding:10px;
+
     border:1px solid #ddd;
+
     text-align:center;
+
     vertical-align:middle;
 }
 
 th{
     background:#2c3e50;
+
     color:white;
+
     position:sticky;
+
     top:0;
+
     z-index:2;
 }
 
@@ -88,10 +111,15 @@ tr:nth-child(even){
 
 button{
     padding:7px 12px;
+
     color:white;
+
     border:none;
+
     cursor:pointer;
+
     border-radius:5px;
+
     font-size:13px;
 }
 
@@ -105,11 +133,13 @@ button:hover{
 
 .view-button{
     background:#2980b9;
+
     margin-top:5px;
 }
 
 .download-button{
     background:#8e44ad;
+
     margin-top:5px;
 }
 
@@ -120,29 +150,58 @@ button:hover{
 .result-image{
     width:120px;
     height:80px;
+
     object-fit:cover;
+
     border-radius:6px;
+
     border:1px solid #ccc;
+
     display:block;
+
     margin:auto;
 }
 
 .no-image{
     color:#777;
+
     font-weight:bold;
 }
 
 .badge{
     display:inline-block;
+
     padding:5px 8px;
+
     border-radius:5px;
+
     background:#27ae60;
+
     color:white;
+
     font-size:12px;
+
     font-weight:bold;
 }
 
+.empty-message{
+    text-align:center;
+
+    padding:40px;
+
+    font-size:18px;
+
+    background:white;
+
+    color:#555;
+
+    border-radius:8px;
+
+    margin-top:20px;
+}
+
 </style>
+
 
 <script>
 
@@ -154,205 +213,12 @@ function valueOrDash(value){
         value === "" ||
         value === "None"
     ){
+
         return "-";
+
     }
 
     return value;
-}
-
-
-function printSlip(data){
-
-    let imageSection = "";
-
-    if(
-        data.image_url &&
-        data.image_url !== "None" &&
-        data.image_url !== ""
-    ){
-
-        imageSection = `
-        <div style="margin-top:15px;text-align:center;">
-            <b>Result Image</b>
-            <br><br>
-            <img
-                src="${data.image_url}"
-                style="width:280px;max-width:100%;"
-                onerror="this.style.display='none';"
-            >
-        </div>
-        `;
-    }
-
-    let slip = `
-    <!DOCTYPE html>
-
-    <html>
-
-    <head>
-
-    <title>Sugar Factory Slip</title>
-
-    <style>
-
-    body{
-        font-family:Arial,sans-serif;
-        padding:20px;
-        color:#000;
-    }
-
-    h2{
-        text-align:center;
-        margin-bottom:5px;
-    }
-
-    .subtitle{
-        text-align:center;
-        font-size:13px;
-        margin-bottom:15px;
-    }
-
-    table{
-        width:100%;
-        border-collapse:collapse;
-        margin-top:10px;
-    }
-
-    td{
-        border:1px solid #000;
-        padding:7px;
-    }
-
-    .label{
-        font-weight:bold;
-        width:40%;
-    }
-
-    .footer{
-        margin-top:20px;
-        text-align:center;
-        font-size:12px;
-    }
-
-    </style>
-
-    </head>
-
-    <body>
-
-    <h2>Sugar Factory</h2>
-
-    <div class="subtitle">
-        Tractor Entry Slip
-    </div>
-
-    <hr>
-
-    <table>
-
-    <tr>
-        <td class="label">Name</td>
-        <td>${valueOrDash(data.name)}</td>
-    </tr>
-
-    <tr>
-        <td class="label">Phone</td>
-        <td>${valueOrDash(data.phone)}</td>
-    </tr>
-
-    <tr>
-        <td class="label">Address</td>
-        <td>${valueOrDash(data.address)}</td>
-    </tr>
-
-    <tr>
-        <td class="label">Tractor Number</td>
-        <td>${valueOrDash(data.tractor)}</td>
-    </tr>
-
-    <tr>
-        <td class="label">Trip</td>
-        <td>${valueOrDash(data.trip)}</td>
-    </tr>
-
-    <tr>
-        <td class="label">Driver</td>
-        <td>${valueOrDash(data.driver)}</td>
-    </tr>
-
-    <tr>
-        <td class="label">Driver Phone</td>
-        <td>${valueOrDash(data.driver_phone)}</td>
-    </tr>
-
-    <tr>
-        <td class="label">Detected Number</td>
-        <td>${valueOrDash(data.detected_number)}</td>
-    </tr>
-
-    <tr>
-        <td class="label">Entry Number</td>
-        <td>${valueOrDash(data.entry)}</td>
-    </tr>
-
-    <tr>
-        <td class="label">Token Number</td>
-        <td>${valueOrDash(data.token)}</td>
-    </tr>
-
-    <tr>
-        <td class="label">Time</td>
-        <td>${valueOrDash(data.time)}</td>
-    </tr>
-
-    </table>
-
-    ${imageSection}
-
-    <hr>
-
-    <div class="footer">
-        Generated automatically by Tractor Entry Management System
-    </div>
-
-    </body>
-
-    </html>
-    `;
-
-    let win = window.open(
-        "",
-        "",
-        "width=500,height=700"
-    );
-
-    if(!win){
-
-        alert(
-            "Please allow pop-ups to print the slip."
-        );
-
-        return;
-    }
-
-    win.document.open();
-
-    win.document.write(
-        slip
-    );
-
-    win.document.close();
-
-    setTimeout(
-        function(){
-
-            win.focus();
-
-            win.print();
-
-        },
-        1000
-    );
 }
 
 
@@ -377,17 +243,314 @@ function downloadImage(url){
 }
 
 
-function refreshDashboard(){
+function printSlip(data){
 
-    location.reload();
+    let imageSection = "";
+
+    if(
+        data.image_url &&
+        data.image_url !== "None" &&
+        data.image_url !== ""
+    ){
+
+        imageSection = `
+
+        <div
+            style="
+            margin-top:15px;
+            text-align:center;
+            "
+        >
+
+        <b>Result Image</b>
+
+        <br>
+
+        <br>
+
+        <img
+            src="${data.image_url}"
+            style="
+            width:280px;
+            max-width:100%;
+            "
+        >
+
+        </div>
+
+        `;
+    }
+
+
+    let slip = `
+
+    <!DOCTYPE html>
+
+    <html>
+
+    <head>
+
+    <title>
+        Tractor Entry Slip
+    </title>
+
+    <style>
+
+    body{
+
+        font-family:Arial,sans-serif;
+
+        padding:20px;
+
+        color:#000;
+
+    }
+
+    h2{
+
+        text-align:center;
+
+        margin-bottom:5px;
+
+    }
+
+    .subtitle{
+
+        text-align:center;
+
+        font-size:13px;
+
+        margin-bottom:15px;
+
+    }
+
+    table{
+
+        width:100%;
+
+        border-collapse:collapse;
+
+    }
+
+    td{
+
+        border:1px solid #000;
+
+        padding:7px;
+
+    }
+
+    .label{
+
+        font-weight:bold;
+
+        width:40%;
+
+    }
+
+    .footer{
+
+        margin-top:20px;
+
+        text-align:center;
+
+        font-size:12px;
+
+    }
+
+    </style>
+
+    </head>
+
+    <body>
+
+    <h2>
+        Sugar Factory
+    </h2>
+
+    <div class="subtitle">
+        Tractor Entry Slip
+    </div>
+
+    <hr>
+
+    <table>
+
+    <tr>
+        <td class="label">
+            Name
+        </td>
+
+        <td>
+            ${valueOrDash(data.name)}
+        </td>
+    </tr>
+
+
+    <tr>
+        <td class="label">
+            Phone
+        </td>
+
+        <td>
+            ${valueOrDash(data.phone)}
+        </td>
+    </tr>
+
+
+    <tr>
+        <td class="label">
+            Address
+        </td>
+
+        <td>
+            ${valueOrDash(data.address)}
+        </td>
+    </tr>
+
+
+    <tr>
+        <td class="label">
+            Tractor
+        </td>
+
+        <td>
+            ${valueOrDash(data.tractor)}
+        </td>
+    </tr>
+
+
+    <tr>
+        <td class="label">
+            Trip
+        </td>
+
+        <td>
+            ${valueOrDash(data.trip)}
+        </td>
+    </tr>
+
+
+    <tr>
+        <td class="label">
+            Driver
+        </td>
+
+        <td>
+            ${valueOrDash(data.driver)}
+        </td>
+    </tr>
+
+
+    <tr>
+        <td class="label">
+            Driver Phone
+        </td>
+
+        <td>
+            ${valueOrDash(data.driver_phone)}
+        </td>
+    </tr>
+
+
+    <tr>
+        <td class="label">
+            Detected Number
+        </td>
+
+        <td>
+            ${valueOrDash(data.detected_number)}
+        </td>
+    </tr>
+
+
+    <tr>
+        <td class="label">
+            Entry Number
+        </td>
+
+        <td>
+            ${valueOrDash(data.entry)}
+        </td>
+    </tr>
+
+
+    <tr>
+        <td class="label">
+            Token Number
+        </td>
+
+        <td>
+            ${valueOrDash(data.token)}
+        </td>
+    </tr>
+
+
+    <tr>
+        <td class="label">
+            Time
+        </td>
+
+        <td>
+            ${valueOrDash(data.time)}
+        </td>
+    </tr>
+
+    </table>
+
+    ${imageSection}
+
+    <hr>
+
+    <div class="footer">
+        Tractor Entry Management System
+    </div>
+
+    </body>
+
+    </html>
+
+    `;
+
+
+    let win = window.open(
+        "",
+        "",
+        "width=500,height=700"
+    );
+
+
+    if(!win){
+
+        alert(
+            "Please allow pop-ups."
+        );
+
+        return;
+    }
+
+
+    win.document.open();
+
+    win.document.write(
+        slip
+    );
+
+    win.document.close();
+
+
+    setTimeout(
+        function(){
+
+            win.focus();
+
+            win.print();
+
+        },
+        1000
+    );
 
 }
-
-
-setTimeout(
-    refreshDashboard,
-    5000
-);
 
 </script>
 
@@ -402,21 +565,26 @@ setTimeout(
 
 <div class="top-bar">
 
-    <div>
-        <b>Office Panel</b>
-    </div>
 
-    <div>
+<div>
+    <b>
+        Office Panel
+    </b>
+</div>
 
-        <a href="/logout">
 
-            <button class="logout-button">
-                Logout
-            </button>
+<div>
 
-        </a>
+<a href="/logout">
 
-    </div>
+<button class="logout-button">
+    Logout
+</button>
+
+</a>
+
+</div>
+
 
 </div>
 
@@ -426,12 +594,17 @@ setTimeout(
 </h2>
 
 
-<div class="status">
-    Dashboard automatically refreshes every 5 seconds
+<div class="subtitle">
+
+Only confirmed tractor entries are displayed
+
 </div>
 
 
 <div class="table-container">
+
+
+{% if data %}
 
 
 <table>
@@ -477,7 +650,7 @@ setTimeout(
 
 
 <td>
-    {{ row[0] if row[0] else "-" }}
+    {{ row[0] }}
 </td>
 
 
@@ -498,17 +671,11 @@ setTimeout(
 
 <td>
 
-    {% if row[4] and row[4] != "None" %}
+<span class="badge">
 
-        <span class="badge">
-            {{ row[4] }}
-        </span>
+{{ row[4] }}
 
-    {% else %}
-
-        -
-
-    {% endif %}
+</span>
 
 </td>
 
@@ -530,57 +697,37 @@ setTimeout(
 
 <td>
 
-    {% if row[8] and row[8] != "None" %}
-
-        <b>
-            {{ row[8] }}
-        </b>
-
-    {% else %}
-
-        -
-
-    {% endif %}
+<b>
+    {{ row[8] }}
+</b>
 
 </td>
 
 
 <td>
 
-    {% if row[9] and row[9] != "None" %}
+<span class="badge">
 
-        <span class="badge">
-            {{ row[9] }}
-        </span>
+{{ row[9] }}
 
-    {% else %}
-
-        -
-
-    {% endif %}
+</span>
 
 </td>
 
 
 <td>
 
-    {% if row[10] and row[10] != "None" %}
+<span class="badge">
 
-        <span class="badge">
-            {{ row[10] }}
-        </span>
+{{ row[10] }}
 
-    {% else %}
-
-        -
-
-    {% endif %}
+</span>
 
 </td>
 
 
 <td>
-    {{ row[11] if row[11] else "-" }}
+    {{ row[11] }}
 </td>
 
 
@@ -602,10 +749,14 @@ setTimeout(
 
 <button
     class="view-button"
-    onclick='window.open({{ row[12]|tojson }}, "_blank")'
+
+    onclick='window.open(
+        {{ row[12]|tojson }},
+        "_blank"
+    )'
 >
 
-    View
+View
 
 </button>
 
@@ -615,10 +766,13 @@ setTimeout(
 
 <button
     class="download-button"
-    onclick='downloadImage({{ row[12]|tojson }})'
+
+    onclick='downloadImage(
+        {{ row[12]|tojson }}
+    )'
 >
 
-    Download
+Download
 
 </button>
 
@@ -627,7 +781,9 @@ setTimeout(
 
 
 <span class="no-image">
-    No Image
+
+No Image
+
 </span>
 
 
@@ -642,6 +798,7 @@ setTimeout(
 
 <button
     class="print-button"
+
     onclick='printSlip({
 
         name: {{ row[2]|tojson }},
@@ -671,7 +828,7 @@ setTimeout(
     })'
 >
 
-    Print
+Print
 
 </button>
 
@@ -686,6 +843,23 @@ setTimeout(
 
 
 </table>
+
+
+{% else %}
+
+
+<div class="empty-message">
+
+No tractor entry detected yet.
+
+<br>
+
+Waiting for camera/OCR entry...
+
+</div>
+
+
+{% endif %}
 
 
 </div>
