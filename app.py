@@ -4,26 +4,16 @@ import random
 import os
 from datetime import datetime
 
-
-# =========================================================
-# OCR IMPORT
-# =========================================================
 try:
     from detect_ocr import detect_number_plate
 except Exception:
     detect_number_plate = None
 
 
-# =========================================================
-# FLASK APP
-# =========================================================
 app = Flask(__name__)
 app.secret_key = "secret123"
 
 
-# =========================================================
-# DATABASE
-# =========================================================
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
@@ -31,15 +21,11 @@ def get_connection():
     return psycopg.connect(DATABASE_URL)
 
 
-# =========================================================
-# DATABASE INITIALIZATION
-# =========================================================
 def init_db():
 
     conn = get_connection()
     cur = conn.cursor()
 
-    # ---------------- FARMERS TABLE ----------------
     cur.execute("""
         CREATE TABLE IF NOT EXISTS farmers (
             id SERIAL PRIMARY KEY,
@@ -49,7 +35,6 @@ def init_db():
         )
     """)
 
-    # ---------------- ENTRIES TABLE ----------------
     cur.execute("""
         CREATE TABLE IF NOT EXISTS entries (
             id SERIAL PRIMARY KEY,
@@ -59,19 +44,14 @@ def init_db():
             tractor VARCHAR(50),
             trip VARCHAR(50),
             driver_name VARCHAR(100),
-            driver_phone VARCHAR(20),
+            driver_phone VARCHAR(50),
             detected_number VARCHAR(50) DEFAULT 'None',
             entry_no VARCHAR(50) DEFAULT 'None',
             token VARCHAR(50) DEFAULT 'None',
             time VARCHAR(50) DEFAULT 'None',
-            result_image_url VARCHAR(500)
-            DEFAULT 'None'
+            result_image_url TEXT DEFAULT 'None'
         )
     """)
-
-    # -------------------------------------------------
-    # OLD DATABASE SUPPORT
-    # -------------------------------------------------
 
     cur.execute("""
         ALTER TABLE entries
@@ -100,10 +80,7 @@ def init_db():
     cur.execute("""
         ALTER TABLE entries
         ADD COLUMN IF NOT EXISTS result_image_url TEXT
-    """)
-    cur.execute("""
-        ALTER TABLE entries
-        ADD COLUMN IF NOT EXISTS result_image_url VARCHAR(500) DEFAULT 'None'
+        DEFAULT 'None'
     """)
 
     conn.commit()
@@ -112,13 +89,8 @@ def init_db():
     conn.close()
 
 
-# Initialize database
 init_db()
 
-
-# =========================================================
-# HELPER FUNCTIONS
-# =========================================================
 
 def clean_plate(number):
 
@@ -136,78 +108,99 @@ def clean_plate(number):
 
 
 def generate_entry():
+
     return "E" + str(random.randint(1000, 9999))
 
 
 def generate_token():
+
     return "T" + str(random.randint(100, 999))
 
 
 def current_time():
-    return datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
 
+    return datetime.now().strftime(
+        "%d-%m-%Y %I:%M:%S %p"
+    )
 
-# =========================================================
-# HOME
-# =========================================================
 
 @app.route("/")
 def home():
+
     return render_template("index.html")
 
-
-# =========================================================
-# ADMIN LOGIN
-# =========================================================
 
 @app.route("/admin_login", methods=["POST"])
 def admin_login():
 
-    username = request.form.get("username", "")
-    password = request.form.get("password", "")
+    username = request.form.get(
+        "username",
+        ""
+    )
 
-    if username == "admin" and password == "admin123":
+    password = request.form.get(
+        "password",
+        ""
+    )
+
+    if (
+        username == "admin"
+        and password == "admin123"
+    ):
 
         session["admin"] = True
 
-        return redirect("/admin_dashboard")
+        return redirect(
+            "/admin_dashboard"
+        )
 
     return "Invalid Admin Login"
 
 
-# =========================================================
-# OFFICE LOGIN
-# =========================================================
-
 @app.route("/office_login", methods=["POST"])
 def office_login():
 
-    username = request.form.get("username", "")
-    password = request.form.get("password", "")
+    username = request.form.get(
+        "username",
+        ""
+    )
 
-    if username == "office" and password == "office123":
+    password = request.form.get(
+        "password",
+        ""
+    )
+
+    if (
+        username == "office"
+        and password == "office123"
+    ):
 
         session["office"] = True
 
-        return redirect("/office_dashboard")
+        return redirect(
+            "/office_dashboard"
+        )
 
     return "Invalid Office Login"
 
 
-# =========================================================
-# FARMER LOGIN
-# =========================================================
-
 @app.route("/farmer_login", methods=["POST"])
 def farmer_login():
 
-    phone = request.form.get("phone", "")
+    phone = request.form.get(
+        "phone",
+        ""
+    )
 
     conn = get_connection()
     cur = conn.cursor()
 
     cur.execute(
-        "SELECT * FROM farmers WHERE phone=%s",
+        """
+        SELECT *
+        FROM farmers
+        WHERE phone=%s
+        """,
         (phone,)
     )
 
@@ -220,38 +213,53 @@ def farmer_login():
 
         session["farmer"] = phone
 
-        return redirect("/farmer_dashboard")
+        return redirect(
+            "/farmer_dashboard"
+        )
 
     return "Not Registered"
 
 
-# =========================================================
-# FARMER REGISTRATION
-# =========================================================
-
-@app.route("/register", methods=["GET", "POST"])
+@app.route(
+    "/register",
+    methods=["GET", "POST"]
+)
 def register():
 
     if request.method == "POST":
 
-        name = request.form.get("name", "")
-        phone = request.form.get("phone", "")
-        address = request.form.get("address", "")
+        name = request.form.get(
+            "name",
+            ""
+        )
+
+        phone = request.form.get(
+            "phone",
+            ""
+        )
+
+        address = request.form.get(
+            "address",
+            ""
+        )
 
         conn = get_connection()
         cur = conn.cursor()
 
         try:
 
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO farmers
                 (name, phone, address)
                 VALUES (%s, %s, %s)
-            """, (
-                name,
-                phone,
-                address
-            ))
+                """,
+                (
+                    name,
+                    phone,
+                    address
+                )
+            )
 
             conn.commit()
 
@@ -262,19 +270,19 @@ def register():
             cur.close()
             conn.close()
 
-            return f"Registration Error: {e}"
+            return (
+                f"Registration Error: {e}"
+            )
 
         cur.close()
         conn.close()
 
         return redirect("/")
 
-    return render_template("register.html")
+    return render_template(
+        "register.html"
+    )
 
-
-# =========================================================
-# FETCH FARMER
-# =========================================================
 
 @app.route("/get_farmer/<phone>")
 def get_farmer(phone):
@@ -282,11 +290,14 @@ def get_farmer(phone):
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("""
+    cur.execute(
+        """
         SELECT name, address
         FROM farmers
         WHERE phone=%s
-    """, (phone,))
+        """,
+        (phone,)
+    )
 
     data = cur.fetchone()
 
@@ -305,11 +316,10 @@ def get_farmer(phone):
     })
 
 
-# =========================================================
-# ADMIN DASHBOARD
-# =========================================================
-
-@app.route("/admin_dashboard", methods=["GET", "POST"])
+@app.route(
+    "/admin_dashboard",
+    methods=["GET", "POST"]
+)
 def admin_dashboard():
 
     if "admin" not in session:
@@ -318,17 +328,21 @@ def admin_dashboard():
     conn = get_connection()
     cur = conn.cursor()
 
-    # -----------------------------------------------------
-    # ADD NEW TRACTOR ENTRY
-    # -----------------------------------------------------
-
     if request.method == "POST":
 
         entry_time = datetime.now().strftime(
             "%d-%m-%Y %I:%M:%S %p"
         )
 
-        cur.execute("""
+        tractor = clean_plate(
+            request.form.get(
+                "tractor",
+                ""
+            )
+        )
+
+        cur.execute(
+            """
             INSERT INTO entries
             (
                 farmer_phone,
@@ -346,34 +360,50 @@ def admin_dashboard():
             )
             VALUES
             (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        """, (
-
-            request.form.get("phone", ""),
-            request.form.get("name", ""),
-            request.form.get("address", ""),
-            request.form.get("tractor", ""),
-            request.form.get("trip", ""),
-            request.form.get("driver_name", ""),
-            request.form.get("driver_phone", ""),
-
-            "None",
-            "None",
-            "None",
-            entry_time,
-            None
-        ))
+            """,
+            (
+                request.form.get(
+                    "phone",
+                    ""
+                ),
+                request.form.get(
+                    "name",
+                    ""
+                ),
+                request.form.get(
+                    "address",
+                    ""
+                ),
+                tractor,
+                request.form.get(
+                    "trip",
+                    ""
+                ),
+                request.form.get(
+                    "driver_name",
+                    ""
+                ),
+                request.form.get(
+                    "driver_phone",
+                    ""
+                ),
+                "None",
+                "None",
+                "None",
+                entry_time,
+                "None"
+            )
+        )
 
         conn.commit()
 
-    # -----------------------------------------------------
-    # SHOW ALL ENTRIES
-    # -----------------------------------------------------
-
-    cur.execute("""
+    cur.execute(
+        """
         SELECT *
         FROM entries
         ORDER BY id DESC
-    """)
+        """
+    )
 
     data = cur.fetchall()
 
@@ -385,10 +415,6 @@ def admin_dashboard():
         data=data
     )
 
-
-# =========================================================
-# OCR DETECTION API
-# =========================================================
 
 @app.route("/detect")
 def detect():
@@ -402,7 +428,9 @@ def detect():
 
     detected_number = detect_number_plate()
 
-    detected_number = clean_plate(detected_number)
+    detected_number = clean_plate(
+        detected_number
+    )
 
     if not detected_number:
 
@@ -414,88 +442,71 @@ def detect():
     conn = get_connection()
     cur = conn.cursor()
 
-    # -----------------------------------------------------
-    # ONLY PENDING ENTRY
-    # -----------------------------------------------------
-
-    cur.execute("""
-        SELECT id, tractor, entry_no, token
+    cur.execute(
+        """
+        SELECT
+            id,
+            tractor,
+            entry_no,
+            token
         FROM entries
         WHERE
             (entry_no IS NULL OR entry_no = 'None')
             AND
             (token IS NULL OR token = 'None')
         ORDER BY id DESC
-        LIMIT 1
-    """)
+        """,
+    )
 
-    row = cur.fetchone()
+    rows = cur.fetchall()
 
-    if not row:
+    matched_row = None
+
+    for row in rows:
+
+        tractor_number = clean_plate(
+            row[1]
+        )
+
+        if tractor_number == detected_number:
+
+            matched_row = row
+            break
+
+    if not matched_row:
 
         cur.close()
         conn.close()
 
         return jsonify({
-            "status": "no active entry",
-            "message": "Please create a new tractor entry first."
+            "status": "not matched",
+            "plate": detected_number
         })
 
-    entry_id = row[0]
-    tractor_number = clean_plate(row[1])
+    entry_id = matched_row[0]
 
-    # Save detected number
-    cur.execute("""
+    entry_no = generate_entry()
+    token = generate_token()
+    entry_time = current_time()
+
+    cur.execute(
+        """
         UPDATE entries
-        SET detected_number=%s
+        SET
+            detected_number=%s,
+            entry_no=%s,
+            token=%s,
+            time=%s
         WHERE id=%s
-    """, (
-        detected_number,
-        entry_id
-    ))
-
-    # -----------------------------------------------------
-    # MATCH
-    # -----------------------------------------------------
-
-    if tractor_number == detected_number:
-
-        entry_no = generate_entry()
-        token = generate_token()
-        entry_time = current_time()
-
-        cur.execute("""
-            UPDATE entries
-            SET
-                detected_number=%s,
-                entry_no=%s,
-                token=%s,
-                time=%s
-            WHERE id=%s
-        """, (
+        """,
+        (
             detected_number,
             entry_no,
             token,
             entry_time,
             entry_id
-        ))
-
-        conn.commit()
-
-        cur.close()
-        conn.close()
-
-        return jsonify({
-            "status": "matched",
-            "tractor": tractor_number,
-            "plate": detected_number,
-            "entry": entry_no,
-            "token": token
-        })
-
-    # -----------------------------------------------------
-    # NOT MATCHED
-    # -----------------------------------------------------
+        )
+    )
 
     conn.commit()
 
@@ -503,15 +514,13 @@ def detect():
     conn.close()
 
     return jsonify({
-        "status": "not matched",
-        "tractor": tractor_number,
-        "plate": detected_number
+        "status": "matched",
+        "plate": detected_number,
+        "entry": entry_no,
+        "token": token,
+        "time": entry_time
     })
 
-
-# =========================================================
-# OFFICE DASHBOARD
-# =========================================================
 
 @app.route("/office_dashboard")
 def office_dashboard():
@@ -522,11 +531,13 @@ def office_dashboard():
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("""
+    cur.execute(
+        """
         SELECT *
         FROM entries
         ORDER BY id DESC
-    """)
+        """
+    )
 
     data = cur.fetchall()
 
@@ -539,10 +550,6 @@ def office_dashboard():
     )
 
 
-# =========================================================
-# FARMER DASHBOARD
-# =========================================================
-
 @app.route("/farmer_dashboard")
 def farmer_dashboard():
 
@@ -554,12 +561,15 @@ def farmer_dashboard():
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("""
+    cur.execute(
+        """
         SELECT *
         FROM entries
         WHERE farmer_phone=%s
         ORDER BY id DESC
-    """, (phone,))
+        """,
+        (phone,)
+    )
 
     data = cur.fetchall()
 
@@ -571,10 +581,6 @@ def farmer_dashboard():
         data=data
     )
 
-
-# =========================================================
-# DATABASE TEST
-# =========================================================
 
 @app.route("/db_test")
 def db_test():
@@ -590,34 +596,53 @@ def db_test():
         cur.close()
         conn.close()
 
-        return "Database Connected Successfully ✅"
+        return (
+            "Database Connected Successfully"
+        )
 
     except Exception as e:
 
         return str(e)
 
 
-# =========================================================
-# UPDATE DETECTED NUMBER + CLOUDINARY IMAGE
-# =========================================================
-
-@app.route("/update_plate", methods=["POST"])
+@app.route(
+    "/update_plate",
+    methods=["POST"]
+)
 def update_plate():
+
+    conn = None
+    cur = None
 
     try:
 
-        data = request.get_json(silent=True)
+        data = request.get_json(
+            silent=True
+        )
 
         if not data:
+
             return jsonify({
                 "status": "error",
                 "message": "No JSON data received"
             }), 400
 
-        plate = clean_plate(data.get("plate", ""))
-        image_url = data.get("image_url", "")
+        plate = clean_plate(
+            data.get(
+                "plate",
+                ""
+            )
+        )
+
+        image_url = str(
+            data.get(
+                "image_url",
+                ""
+            )
+        ).strip()
 
         if not plate:
+
             return jsonify({
                 "status": "error",
                 "message": "Empty plate number"
@@ -626,167 +651,182 @@ def update_plate():
         conn = get_connection()
         cur = conn.cursor()
 
-        # ---------------------------------------------
-        # TAKE LATEST MANUAL ENTRY
-        # ---------------------------------------------
+        print("=" * 60)
+        print("OCR PLATE       :", plate)
+        print("CLOUDINARY IMAGE:", image_url)
+        print("=" * 60)
 
-        cur.execute("""
+        cur.execute(
+            """
             SELECT
                 id,
                 tractor,
                 entry_no,
                 token
             FROM entries
+            WHERE
+                (entry_no IS NULL OR entry_no = 'None')
+                AND
+                (token IS NULL OR token = 'None')
             ORDER BY id DESC
-            LIMIT 1
-        """)
+            """
+        )
 
-        row = cur.fetchone()
+        rows = cur.fetchall()
 
-        if not row:
+        matched_row = None
 
-            cur.close()
-            conn.close()
+        for row in rows:
+
+            entry_id = row[0]
+
+            tractor_number = clean_plate(
+                row[1]
+            )
+
+            print(
+                "CHECK:",
+                entry_id,
+                tractor_number,
+                "VS",
+                plate
+            )
+
+            if (
+                tractor_number
+                and tractor_number == plate
+            ):
+
+                matched_row = row
+                break
+
+        if matched_row is None:
+
+            conn.rollback()
+
+            print("NO MATCH FOUND")
 
             return jsonify({
-                "status": "no entry",
+                "status": "not matched",
                 "plate": plate,
-                "image_url": image_url
+                "image_url": image_url,
+                "message": "Registered tractor not found"
             })
 
-        entry_id = row[0]
+        entry_id = matched_row[0]
 
-        tractor_number = clean_plate(row[1])
+        existing_entry = matched_row[2]
+        existing_token = matched_row[3]
 
-        existing_entry = row[2]
-        existing_token = row[3]
+        if (
+            existing_entry is None
+            or existing_entry == ""
+            or existing_entry == "None"
+        ):
 
-        print("========================================")
-        print("LATEST ENTRY ID :", entry_id)
-        print("MANUAL TRACTOR  :", tractor_number)
-        print("OCR PLATE       :", plate)
-        print("IMAGE URL       :", image_url)
-        print("========================================")
+            entry_no = generate_entry()
 
-        # ---------------------------------------------
-        # SAVE OCR + IMAGE
-        # ---------------------------------------------
+        else:
 
-        cur.execute("""
+            entry_no = existing_entry
+
+        if (
+            existing_token is None
+            or existing_token == ""
+            or existing_token == "None"
+        ):
+
+            token = generate_token()
+
+        else:
+
+            token = existing_token
+
+        entry_time = current_time()
+
+        cur.execute(
+            """
             UPDATE entries
             SET
                 detected_number=%s,
+                entry_no=%s,
+                token=%s,
+                time=%s,
                 result_image_url=%s
             WHERE id=%s
-        """, (
-            plate,
-            image_url if image_url else "None",
-            entry_id
-        ))
-
-        # ---------------------------------------------
-        # CHECK MATCH
-        # ---------------------------------------------
-
-        if tractor_number == plate:
-
-            if (
-                existing_entry is None
-                or existing_entry == ""
-                or existing_entry == "None"
-            ):
-                entry_no = generate_entry()
-            else:
-                entry_no = existing_entry
-
-            if (
-                existing_token is None
-                or existing_token == ""
-                or existing_token == "None"
-            ):
-                token = generate_token()
-            else:
-                token = existing_token
-
-            entry_time = current_time()
-
-            cur.execute("""
-                UPDATE entries
-                SET
-                    detected_number=%s,
-                    entry_no=%s,
-                    token=%s,
-                    time=%s,
-                    result_image_url=%s
-                WHERE id=%s
-            """, (
+            """,
+            (
                 plate,
                 entry_no,
                 token,
                 entry_time,
-                image_url if image_url else "None",
+                image_url
+                if image_url
+                else "None",
                 entry_id
-            ))
-
-            conn.commit()
-
-            cur.close()
-            conn.close()
-
-            print("========================================")
-            print("MATCHED SUCCESSFULLY")
-            print("TRACTOR :", tractor_number)
-            print("PLATE   :", plate)
-            print("ENTRY   :", entry_no)
-            print("TOKEN   :", token)
-            print("IMAGE   :", image_url)
-            print("========================================")
-
-            return jsonify({
-                "status": "matched",
-                "plate": plate,
-                "tractor": tractor_number,
-                "entry": entry_no,
-                "token": token,
-                "image_url": image_url
-            })
-
-        # ---------------------------------------------
-        # NOT MATCHED
-        # ---------------------------------------------
+            )
+        )
 
         conn.commit()
 
-        cur.close()
-        conn.close()
-
-        print("========================================")
-        print("NOT MATCHED")
-        print("TRACTOR :", tractor_number)
-        print("PLATE   :", plate)
-        print("IMAGE   :", image_url)
-        print("========================================")
+        print("=" * 60)
+        print("MATCH SUCCESS")
+        print("ENTRY ID :", entry_id)
+        print("TRACTOR  :", clean_plate(matched_row[1]))
+        print("PLATE    :", plate)
+        print("ENTRY    :", entry_no)
+        print("TOKEN    :", token)
+        print("TIME     :", entry_time)
+        print("IMAGE    :", image_url)
+        print("=" * 60)
 
         return jsonify({
-            "status": "not matched",
+            "status": "matched",
             "plate": plate,
-            "tractor": tractor_number,
-            "entry": "None",
-            "token": "None",
+            "tractor": clean_plate(
+                matched_row[1]
+            ),
+            "entry": entry_no,
+            "token": token,
+            "time": entry_time,
             "image_url": image_url
         })
 
     except Exception as e:
 
-        print("UPDATE PLATE ERROR:", e)
+        if conn:
+
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
+        print(
+            "UPDATE PLATE ERROR:",
+            e
+        )
 
         return jsonify({
             "status": "error",
             "message": str(e)
         }), 500
-# =========================================================
-# LOGOUT
-# =========================================================
+
+    finally:
+
+        if cur:
+
+            try:
+                cur.close()
+            except Exception:
+                pass
+
+        if conn:
+
+            try:
+                conn.close()
+            except Exception:
+                pass
+
 
 @app.route("/logout")
 def logout():
@@ -796,14 +836,15 @@ def logout():
     return redirect("/")
 
 
-# =========================================================
-# RUN APPLICATION
-# =========================================================
-
 if __name__ == "__main__":
 
     app.run(
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 5000)),
+        port=int(
+            os.environ.get(
+                "PORT",
+                5000
+            )
+        ),
         debug=False
     )
