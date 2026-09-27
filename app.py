@@ -9,6 +9,7 @@ try:
 except Exception:
     detect_number_plate = None
 
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "secret123")
 
@@ -18,6 +19,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 def get_connection():
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL is not set")
+
     return psycopg.connect(DATABASE_URL)
 
 
@@ -91,21 +93,23 @@ def clean_plate(number):
 
     return (
         str(number)
+        .upper()
         .replace(" ", "")
         .replace("-", "")
         .replace(".", "")
         .replace("_", "")
-        .upper()
+        .replace("/", "")
         .strip()
     )
 
 
-def generate_entry():
-    return "E" + str(random.randint(1000, 9999))
+def is_empty_value(value):
+    if value is None:
+        return True
 
+    value = str(value).strip().lower()
 
-def generate_token():
-    return "T" + str(random.randint(100, 999))
+    return value == "" or value == "none"
 
 
 def current_time():
@@ -114,12 +118,280 @@ def current_time():
     )
 
 
-def is_empty_value(value):
-    return (
-        value is None
-        or str(value).strip() == ""
-        or str(value).strip().lower() == "none"
+def generate_entry(cur):
+    for _ in range(200):
+        value = "E" + str(random.randint(1000, 9999))
+
+        cur.execute(
+            """
+            SELECT 1
+            FROM entries
+            WHERE entry_no=%s
+            LIMIT 1
+            """,
+            (value,)
+        )
+
+        if cur.fetchone() is None:
+            return value
+
+    return "E" + str(random.randint(10000, 99999))
+
+
+def generate_token(cur):
+    for _ in range(200):
+        value = "T" + str(random.randint(100, 999))
+
+        cur.execute(
+            """
+            SELECT 1
+            FROM entries
+            WHERE token=%s
+            LIMIT 1
+            """,
+            (value,)
+        )
+
+        if cur.fetchone() is None:
+            return value
+
+    return "T" + str(random.randint(1000, 9999))
+
+
+def find_registered_tractor(cur, plate):
+    cur.execute(
+        """
+        SELECT
+            id,
+            farmer_phone,
+            farmer_name,
+            address,
+            tractor,
+            trip,
+            driver_name,
+            driver_phone,
+            detected_number,
+            entry_no,
+            token,
+            time,
+            result_image_url
+        FROM entries
+        WHERE
+            (
+                entry_no IS NULL
+                OR entry_no=''
+                OR entry_no='None'
+            )
+            AND
+            (
+                token IS NULL
+                OR token=''
+                OR token='None'
+            )
+        ORDER BY id ASC
+        """
     )
+
+    rows = cur.fetchall()
+
+    for row in rows:
+        registered_tractor = clean_plate(row[4])
+
+        print(
+            "CHECK:",
+            "DB =", registered_tractor,
+            "OCR =", plate
+        )
+
+        if (
+            registered_tractor
+            and registered_tractor == plate
+        ):
+            return row
+
+    return None
+
+
+def process_plate(plate, image_url):
+    plate = clean_plate(plate)
+
+    image_url = str(
+        image_url or ""
+    ).strip()
+
+    if image_url.lower() == "none":
+        image_url = ""
+
+    if not plate:
+        return {
+            "status": "error",
+            "message": "OCR plate number is empty"
+        }, 400
+
+    conn = None
+    cur = None
+
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        print()
+        print("=" * 70)
+        print("NEW RASPBERRY PI DETECTION RECEIVED")
+        print("OCR NUMBER :", plate)
+        print("IMAGE URL  :", image_url)
+        print("=" * 70)
+
+        matched_row = find_registered_tractor(
+            cur,
+            plate
+        )
+
+        if matched_row is None:
+            conn.rollback()
+
+            print("NO REGISTERED TRACTOR MATCH")
+            print("OCR NUMBER:", plate)
+            print("=" * 70)
+
+            return {
+                "status": "not matched",
+                "plate": plate,
+                "image_url": image_url,
+                "message": "No pending registered tractor matched this OCR number"
+            }, 200
+
+        entry_id = matched_row[0]
+        tractor = clean_plate(matched_row[4])
+        existing_entry = matched_row[9]
+        existing_token = matched_row[10]
+
+        if not is_empty_value(existing_entry):
+            conn.rollback()
+
+            return {
+                "status": "already processed",
+                "plate": plate,
+                "entry": str(existing_entry),
+                "token": str(existing_token)
+            }, 200
+
+        if not is_empty_value(existing_token):
+            conn.rollback()
+
+            return {
+                "status": "already processed",
+                "plate": plate,
+                "entry": str(existing_entry),
+                "token": str(existing_token)
+            }, 200
+
+        entry_no = generate_entry(cur)
+        token = generate_token(cur)
+        entry_time = current_time()
+
+        saved_image_url = (
+            image_url
+            if image_url
+            else "None"
+        )
+
+        cur.execute(
+            """
+            UPDATE entries
+            SET
+                detected_number=%s,
+                entry_no=%s,
+                token=%s,
+                time=%s,
+                result_image_url=%s
+            WHERE
+                id=%s
+                AND (
+                    entry_no IS NULL
+                    OR entry_no=''
+                    OR entry_no='None'
+                )
+                AND (
+                    token IS NULL
+                    OR token=''
+                    OR token='None'
+                )
+            """,
+            (
+                plate,
+                entry_no,
+                token,
+                entry_time,
+                saved_image_url,
+                entry_id
+            )
+        )
+
+        if cur.rowcount != 1:
+            conn.rollback()
+
+            return {
+                "status": "already processed",
+                "plate": plate,
+                "message": "Registration was processed by another request"
+            }, 200
+
+        conn.commit()
+
+        print("=" * 70)
+        print("MATCH SUCCESS")
+        print("DATABASE ID :", entry_id)
+        print("TRACTOR     :", tractor)
+        print("OCR NUMBER  :", plate)
+        print("ENTRY       :", entry_no)
+        print("TOKEN       :", token)
+        print("TIME        :", entry_time)
+        print("IMAGE URL   :", saved_image_url)
+        print("DATABASE UPDATED SUCCESSFULLY")
+        print("=" * 70)
+
+        return {
+            "status": "matched",
+            "entry_id": entry_id,
+            "plate": plate,
+            "tractor": tractor,
+            "entry": entry_no,
+            "token": token,
+            "time": entry_time,
+            "image_url": image_url,
+            "message": "OCR matched registered tractor and entry generated"
+        }, 200
+
+    except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
+        print("=" * 70)
+        print("PROCESS PLATE ERROR:")
+        print(e)
+        print("=" * 70)
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }, 500
+
+    finally:
+        if cur:
+            try:
+                cur.close()
+            except Exception:
+                pass
+
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 @app.route("/")
@@ -129,10 +401,20 @@ def home():
 
 @app.route("/admin_login", methods=["POST"])
 def admin_login():
-    username = request.form.get("username", "").strip()
-    password = request.form.get("password", "")
+    username = request.form.get(
+        "username",
+        ""
+    ).strip()
 
-    if username == "admin" and password == "admin123":
+    password = request.form.get(
+        "password",
+        ""
+    )
+
+    if (
+        username == "admin"
+        and password == "admin123"
+    ):
         session["admin"] = True
         return redirect("/admin_dashboard")
 
@@ -141,10 +423,20 @@ def admin_login():
 
 @app.route("/office_login", methods=["POST"])
 def office_login():
-    username = request.form.get("username", "").strip()
-    password = request.form.get("password", "")
+    username = request.form.get(
+        "username",
+        ""
+    ).strip()
 
-    if username == "office" and password == "office123":
+    password = request.form.get(
+        "password",
+        ""
+    )
+
+    if (
+        username == "office"
+        and password == "office123"
+    ):
         session["office"] = True
         return redirect("/office_dashboard")
 
@@ -153,7 +445,10 @@ def office_login():
 
 @app.route("/farmer_login", methods=["POST"])
 def farmer_login():
-    phone = request.form.get("phone", "").strip()
+    phone = request.form.get(
+        "phone",
+        ""
+    ).strip()
 
     conn = get_connection()
     cur = conn.cursor()
@@ -182,9 +477,20 @@ def farmer_login():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        phone = request.form.get("phone", "").strip()
-        address = request.form.get("address", "").strip()
+        name = request.form.get(
+            "name",
+            ""
+        ).strip()
+
+        phone = request.form.get(
+            "phone",
+            ""
+        ).strip()
+
+        address = request.form.get(
+            "address",
+            ""
+        ).strip()
 
         conn = get_connection()
         cur = conn.cursor()
@@ -196,7 +502,11 @@ def register():
                 (name, phone, address)
                 VALUES (%s, %s, %s)
                 """,
-                (name, phone, address)
+                (
+                    name,
+                    phone,
+                    address
+                )
             )
 
             conn.commit()
@@ -205,6 +515,7 @@ def register():
             conn.rollback()
             cur.close()
             conn.close()
+
             return f"Registration Error: {e}"
 
         cur.close()
@@ -212,7 +523,9 @@ def register():
 
         return redirect("/")
 
-    return render_template("register.html")
+    return render_template(
+        "register.html"
+    )
 
 
 @app.route("/get_farmer/<phone>")
@@ -245,7 +558,10 @@ def get_farmer(phone):
     })
 
 
-@app.route("/admin_dashboard", methods=["GET", "POST"])
+@app.route(
+    "/admin_dashboard",
+    methods=["GET", "POST"]
+)
 def admin_dashboard():
     if "admin" not in session:
         return redirect("/")
@@ -254,37 +570,66 @@ def admin_dashboard():
     cur = conn.cursor()
 
     if request.method == "POST":
+
         tractor = clean_plate(
-            request.form.get("tractor", "")
+            request.form.get(
+                "tractor",
+                ""
+            )
         )
 
         if not tractor:
             cur.close()
             conn.close()
+
             return "Tractor number is required"
 
-        farmer_phone = request.form.get("phone", "").strip()
-        farmer_name = request.form.get("name", "").strip()
-        address = request.form.get("address", "").strip()
-        trip = request.form.get("trip", "").strip()
-        driver_name = request.form.get("driver_name", "").strip()
-        driver_phone = request.form.get("driver_phone", "").strip()
+        farmer_phone = request.form.get(
+            "phone",
+            ""
+        ).strip()
+
+        farmer_name = request.form.get(
+            "name",
+            ""
+        ).strip()
+
+        address = request.form.get(
+            "address",
+            ""
+        ).strip()
+
+        trip = request.form.get(
+            "trip",
+            ""
+        ).strip()
+
+        driver_name = request.form.get(
+            "driver_name",
+            ""
+        ).strip()
+
+        driver_phone = request.form.get(
+            "driver_phone",
+            ""
+        ).strip()
 
         cur.execute(
             """
             SELECT id
             FROM entries
-            WHERE tractor=%s
-            AND (
-                entry_no IS NULL
-                OR entry_no=''
-                OR entry_no='None'
-            )
-            AND (
-                token IS NULL
-                OR token=''
-                OR token='None'
-            )
+            WHERE
+                tractor=%s
+                AND (
+                    entry_no IS NULL
+                    OR entry_no=''
+                    OR entry_no='None'
+                )
+                AND (
+                    token IS NULL
+                    OR token=''
+                    OR token='None'
+                )
             LIMIT 1
             """,
             (tractor,)
@@ -295,9 +640,10 @@ def admin_dashboard():
         if existing:
             cur.close()
             conn.close()
+
             return (
                 f"Tractor {tractor} is already registered "
-                f"and waiting for detection."
+                f"and waiting for Raspberry Pi detection."
             )
 
         cur.execute(
@@ -318,7 +664,10 @@ def admin_dashboard():
                 result_image_url
             )
             VALUES
-            (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            (
+                %s,%s,%s,%s,%s,%s,%s,
+                %s,%s,%s,%s,%s
+            )
             """,
             (
                 farmer_phone,
@@ -357,7 +706,10 @@ def admin_dashboard():
     )
 
 
-@app.route("/delete_registration/<int:entry_id>", methods=["POST"])
+@app.route(
+    "/delete_registration/<int:entry_id>",
+    methods=["POST"]
+)
 def delete_registration(entry_id):
     if "admin" not in session:
         return redirect("/")
@@ -369,7 +721,18 @@ def delete_registration(entry_id):
         cur.execute(
             """
             DELETE FROM entries
-            WHERE id=%s
+            WHERE
+                id=%s
+                AND (
+                    entry_no IS NULL
+                    OR entry_no=''
+                    OR entry_no='None'
+                )
+                AND (
+                    token IS NULL
+                    OR token=''
+                    OR token='None'
+                )
             """,
             (entry_id,)
         )
@@ -380,6 +743,7 @@ def delete_registration(entry_id):
         conn.rollback()
         cur.close()
         conn.close()
+
         return f"Delete Error: {e}"
 
     cur.close()
@@ -388,293 +752,85 @@ def delete_registration(entry_id):
     return redirect("/admin_dashboard")
 
 
-@app.route("/detect")
-def detect():
-    if detect_number_plate is None:
-        return jsonify({
-            "status": "error",
-            "message": "OCR function not available"
-        })
-
-    detected_number = detect_number_plate()
-    detected_number = clean_plate(detected_number)
-
-    if not detected_number:
-        return jsonify({
-            "status": "no plate",
-            "message": "Number plate not detected"
-        })
-
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT
-            id,
-            tractor,
-            entry_no,
-            token
-        FROM entries
-        WHERE
-            (
-                entry_no IS NULL
-                OR entry_no=''
-                OR entry_no='None'
-            )
-            AND
-            (
-                token IS NULL
-                OR token=''
-                OR token='None'
-            )
-        ORDER BY id DESC
-        """
-    )
-
-    rows = cur.fetchall()
-
-    matched_row = None
-
-    for row in rows:
-        tractor_number = clean_plate(row[1])
-
-        if tractor_number and tractor_number == detected_number:
-            matched_row = row
-            break
-
-    if not matched_row:
-        cur.close()
-        conn.close()
-
-        return jsonify({
-            "status": "not matched",
-            "plate": detected_number
-        })
-
-    entry_id = matched_row[0]
-    entry_no = generate_entry()
-    token = generate_token()
-    entry_time = current_time()
-
-    cur.execute(
-        """
-        UPDATE entries
-        SET
-            detected_number=%s,
-            entry_no=%s,
-            token=%s,
-            time=%s
-        WHERE id=%s
-        """,
-        (
-            detected_number,
-            entry_no,
-            token,
-            entry_time,
-            entry_id
-        )
-    )
-
-    conn.commit()
-
-    cur.close()
-    conn.close()
-
-    return jsonify({
-        "status": "matched",
-        "plate": detected_number,
-        "entry": entry_no,
-        "token": token,
-        "time": entry_time
-    })
-
-
-@app.route("/update_plate", methods=["POST"])
+@app.route(
+    "/update_plate",
+    methods=["POST"]
+)
 def update_plate():
-    conn = None
-    cur = None
-
     try:
-        data = request.get_json(silent=True)
+        data = request.get_json(
+            silent=True
+        )
 
         if not data:
-            return jsonify({
-                "status": "error",
-                "message": "No JSON data received"
-            }), 400
+            data = request.form.to_dict()
 
         plate = clean_plate(
-            data.get("plate", "")
+            data.get(
+                "plate",
+                ""
+            )
         )
 
         image_url = str(
-            data.get("image_url", "")
+            data.get(
+                "image_url",
+                ""
+            )
         ).strip()
 
         if image_url.lower() == "none":
             image_url = ""
 
-        if not plate:
-            return jsonify({
-                "status": "error",
-                "message": "Empty plate number"
-            }), 400
+        print()
+        print("=" * 70)
+        print("POST /update_plate RECEIVED")
+        print("OCR NUMBER :", plate)
+        print("IMAGE URL  :", image_url)
+        print("=" * 70)
 
-        conn = get_connection()
-        cur = conn.cursor()
-
-        print("=" * 60)
-        print("OCR PLATE       :", plate)
-        print("CLOUDINARY IMAGE:", image_url)
-        print("=" * 60)
-
-        cur.execute(
-            """
-            SELECT
-                id,
-                tractor,
-                entry_no,
-                token
-            FROM entries
-            WHERE
-                (
-                    entry_no IS NULL
-                    OR entry_no=''
-                    OR entry_no='None'
-                )
-                AND
-                (
-                    token IS NULL
-                    OR token=''
-                    OR token='None'
-                )
-            ORDER BY id DESC
-            """
+        result, status_code = process_plate(
+            plate,
+            image_url
         )
 
-        rows = cur.fetchall()
-
-        matched_row = None
-
-        for row in rows:
-            entry_id = row[0]
-            tractor_number = clean_plate(row[1])
-
-            print(
-                "CHECK:",
-                entry_id,
-                tractor_number,
-                "VS",
-                plate
-            )
-
-            if (
-                tractor_number
-                and tractor_number == plate
-            ):
-                matched_row = row
-                break
-
-        if matched_row is None:
-            conn.rollback()
-
-            print("NO MATCH FOUND")
-
-            return jsonify({
-                "status": "not matched",
-                "plate": plate,
-                "image_url": image_url,
-                "message": "Registered tractor not found"
-            })
-
-        entry_id = matched_row[0]
-        tractor = clean_plate(matched_row[1])
-        existing_entry = matched_row[2]
-        existing_token = matched_row[3]
-
-        if is_empty_value(existing_entry):
-            entry_no = generate_entry()
-        else:
-            entry_no = str(existing_entry)
-
-        if is_empty_value(existing_token):
-            token = generate_token()
-        else:
-            token = str(existing_token)
-
-        entry_time = current_time()
-
-        cur.execute(
-            """
-            UPDATE entries
-            SET
-                detected_number=%s,
-                entry_no=%s,
-                token=%s,
-                time=%s,
-                result_image_url=%s
-            WHERE id=%s
-            """,
-            (
-                plate,
-                entry_no,
-                token,
-                entry_time,
-                image_url if image_url else "None",
-                entry_id
-            )
-        )
-
-        conn.commit()
-
-        print("=" * 60)
-        print("MATCH SUCCESS")
-        print("ENTRY ID :", entry_id)
-        print("TRACTOR  :", tractor)
-        print("PLATE    :", plate)
-        print("ENTRY    :", entry_no)
-        print("TOKEN    :", token)
-        print("TIME     :", entry_time)
-        print("IMAGE    :", image_url)
-        print("=" * 60)
-
-        return jsonify({
-            "status": "matched",
-            "plate": plate,
-            "tractor": tractor,
-            "entry": entry_no,
-            "token": token,
-            "time": entry_time,
-            "image_url": image_url
-        })
+        return jsonify(result), status_code
 
     except Exception as e:
-        if conn:
-            try:
-                conn.rollback()
-            except Exception:
-                pass
-
-        print("UPDATE PLATE ERROR:", e)
+        print(
+            "UPDATE PLATE REQUEST ERROR:",
+            e
+        )
 
         return jsonify({
             "status": "error",
             "message": str(e)
         }), 500
 
-    finally:
-        if cur:
-            try:
-                cur.close()
-            except Exception:
-                pass
 
-        if conn:
-            try:
-                conn.close()
-            except Exception:
-                pass
+@app.route("/detect")
+def detect():
+    if detect_number_plate is None:
+        return jsonify({
+            "status": "error",
+            "message": "OCR function not available"
+        }), 500
+
+    try:
+        detected_number = detect_number_plate()
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+    result, status_code = process_plate(
+        detected_number,
+        ""
+    )
+
+    return jsonify(result), status_code
 
 
 @app.route("/office_dashboard")
